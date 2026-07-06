@@ -61,6 +61,14 @@ button.primary{background:linear-gradient(135deg,var(--yellow),var(--yellow2));c
 .nav button.active{background:rgba(250,204,21,.14);color:#fde68a}
 .screen{display:none} .screen.active{display:block}
 .footer-note{text-align:center;color:var(--muted);font-size:12px;margin:18px 0}
+
+.student-list{display:grid;gap:10px;margin-top:12px}
+.student-card{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#0b0f16;border:1px solid var(--line);border-radius:18px;padding:12px}
+.student-card.active{border-color:rgba(250,204,21,.55);background:rgba(250,204,21,.08)}
+.student-card b{display:block;font-size:15px}
+.student-card span{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.student-actions{display:flex;gap:8px;flex-wrap:wrap}
+.student-actions button{min-height:36px;padding:8px 10px;border-radius:12px;font-size:12px}
 @media(max-width:430px){.settings-grid{grid-template-columns:1fr}.kpi-grid{grid-template-columns:1fr 1fr}.day{grid-template-columns:68px 1fr 32px}h1{font-size:23px}}
 </style>
 </head>
@@ -91,8 +99,10 @@ button.primary{background:linear-gradient(135deg,var(--yellow),var(--yellow2));c
 
   <section id="settings" class="screen">
     <div class="card">
-      <div class="week-title"><div><h2>Settings</h2><p>Saved automatically on this phone.</p></div><span class="pill">v1.0.0</span></div>
+      <div class="week-title"><div><h2>Students & Plans</h2><p>Save one race plan per coaching student. Data stays on this phone/browser.</p></div><span class="pill">v1.1.0</span></div>
       <div class="settings-grid">
+        <div class="field full"><label>Active student</label><select id="studentSelect"></select></div>
+        <div class="field full"><label>Student name</label><input id="studentName" type="text" placeholder="Student name"></div>
         <div class="field full"><label>Marathon date — Sunday</label><input id="raceDate" type="date"></div>
         <div class="field"><label>Mileage</label><select id="mileage"><option value="55">55 MPW</option><option value="70">70 MPW</option></select></div>
         <div class="field"><label>Plan length</label><select id="duration"><option value="18">18 weeks</option><option value="12">12 weeks</option></select></div>
@@ -100,8 +110,12 @@ button.primary{background:linear-gradient(135deg,var(--yellow),var(--yellow2));c
       </div>
       <div class="button-row">
         <button class="primary" onclick="refreshAll();showTab('home')">Save & View</button>
+        <button class="secondary" onclick="addStudent()">Add Student</button>
+        <button class="secondary" onclick="duplicateStudent()">Duplicate</button>
+        <button class="secondary" onclick="deleteStudent()">Delete</button>
         <button class="secondary" onclick="resetCompletion()">Reset Checks</button>
       </div>
+      <div id="studentList" class="student-list"></div>
     </div>
     <p class="footer-note">GitHub Pages: upload this file as <b>index.html</b>, then open the URL in Safari → Share → Add to Home Screen.</p>
   </section>
@@ -119,12 +133,26 @@ const PLAN_DATA = {"55 MPW — 18-Week Plan":{"17":{"header":"17 Weeks to Goal",
 const DAY_NAMES = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 const $ = id => document.getElementById(id);
 const els = {
-  raceDate:$('raceDate'), mileage:$('mileage'), duration:$('duration'), raceName:$('raceName'),
+  studentSelect:$('studentSelect'), studentName:$('studentName'), raceDate:$('raceDate'), mileage:$('mileage'), duration:$('duration'), raceName:$('raceName'),
   daysToRace:$('daysToRace'), currentWeekKpi:$('currentWeekKpi'), planKpi:$('planKpi'), weeklyMileageKpi:$('weeklyMileageKpi'),
-  todayWorkout:$('todayWorkout'), tomorrowWorkout:$('tomorrowWorkout'), weekOutput:$('weekOutput'), planOutput:$('planOutput'), weekProgress:$('weekProgress')
+  todayWorkout:$('todayWorkout'), tomorrowWorkout:$('tomorrowWorkout'), weekOutput:$('weekOutput'), planOutput:$('planOutput'), weekProgress:$('weekProgress'), studentList:$('studentList')
 };
 function safeGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function safeSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function makeId(){return 's'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function defaultStudent(){return {id:makeId(),name:'Roni',raceName:safeGet('mtc_raceName')||'Next Marathon',raceDate:safeGet('mtc_raceDate')||'',mileage:safeGet('mtc_mileage')||'55',duration:safeGet('mtc_duration')||'18'};}
+function getStudents(){try{const a=JSON.parse(localStorage.getItem('mtc_students')||'[]');if(Array.isArray(a)&&a.length)return a;}catch(e){}const first=defaultStudent();saveStudents([first]);safeSet('mtc_activeStudent',first.id);return [first];}
+function saveStudents(list){safeSet('mtc_students',JSON.stringify(list));}
+function getActiveStudentId(){const list=getStudents();let id=safeGet('mtc_activeStudent');if(!list.some(s=>s.id===id)){id=list[0].id;safeSet('mtc_activeStudent',id);}return id;}
+function activeStudent(){const id=getActiveStudentId();return getStudents().find(s=>s.id===id)||getStudents()[0];}
+function collectFormStudent(){const current=activeStudent()||{};return {id:current.id||makeId(),name:els.studentName.value.trim()||'Unnamed Student',raceName:els.raceName.value.trim()||'Next Marathon',raceDate:els.raceDate.value,mileage:els.mileage.value,duration:els.duration.value};}
+function persistActiveStudent(){let list=getStudents();const updated=collectFormStudent();list=list.map(s=>s.id===updated.id?updated:s);saveStudents(list);safeSet('mtc_activeStudent',updated.id);safeSet('mtc_raceDate',updated.raceDate);safeSet('mtc_mileage',updated.mileage);safeSet('mtc_duration',updated.duration);safeSet('mtc_raceName',updated.raceName);}
+function syncFormFromStudent(student){if(!student)return;els.studentName.value=student.name||'';els.raceName.value=student.raceName||'';els.raceDate.value=student.raceDate||'';els.mileage.value=student.mileage||'55';els.duration.value=student.duration||'18';}
+function renderStudentControls(){const list=getStudents();const activeId=getActiveStudentId();els.studentSelect.innerHTML=list.map(s=>`<option value="${esc(s.id)}" ${s.id===activeId?'selected':''}>${esc(s.name||'Unnamed Student')} — ${esc(s.raceName||'Race')}</option>`).join('');els.studentList.innerHTML=list.map(s=>`<div class="student-card ${s.id===activeId?'active':''}"><div><b>${esc(s.name||'Unnamed Student')}</b><span>${esc(s.raceName||'Race')} • ${esc(s.raceDate||'No date')} • ${esc(s.mileage||'55')}/${esc(s.duration||'18')}</span></div><div class="student-actions"><button class="secondary" onclick="selectStudent('${s.id}')">Open</button></div></div>`).join('');}
+function selectStudent(id){persistActiveStudent();safeSet('mtc_activeStudent',id);syncFormFromStudent(activeStudent());renderStudentControls();refreshAll();showTab('home');}
+function addStudent(){persistActiveStudent();const name=prompt('Student name?','New Student');if(name===null)return;const list=getStudents();const ns={id:makeId(),name:(name.trim()||'New Student'),raceName:'Next Marathon',raceDate:'',mileage:'55',duration:'18'};list.push(ns);saveStudents(list);safeSet('mtc_activeStudent',ns.id);syncFormFromStudent(ns);renderStudentControls();refreshAll();showTab('settings');}
+function duplicateStudent(){persistActiveStudent();const cur=activeStudent();const name=prompt('Name for duplicated student?',(cur.name||'Student')+' Copy');if(name===null)return;const list=getStudents();const ns={...cur,id:makeId(),name:(name.trim()||((cur.name||'Student')+' Copy'))};list.push(ns);saveStudents(list);safeSet('mtc_activeStudent',ns.id);syncFormFromStudent(ns);renderStudentControls();refreshAll();showTab('settings');}
+function deleteStudent(){const list=getStudents();if(list.length<=1){alert('Keep at least one student plan.');return;}const cur=activeStudent();if(!confirm(`Delete ${cur.name||'this student'} plan from this phone?`))return;const next=list.filter(s=>s.id!==cur.id);saveStudents(next);safeSet('mtc_activeStudent',next[0].id);syncFormFromStudent(next[0]);renderStudentControls();refreshAll();showTab('settings');}
 function parseLocalDate(value){if(!value)return null;const p=value.split('-').map(Number);if(p.length!==3||p.some(Number.isNaN))return null;return new Date(p[0],p[1]-1,p[2]);}
 function ymd(d){const z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;}
 function stripTime(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
@@ -146,11 +174,11 @@ function displayWeekNum(internalWeek){return internalWeek+1;} // Week 1 = Race W
 function classify(workout){const t=(workout||'').toLowerCase();if(t.includes('goal marathon'))return 'Race';if(t.includes('rest'))return 'Rest';if(t.includes('recovery'))return 'Recovery';if(t.includes('medium-long'))return 'Medium-long';if(t.includes('long run'))return 'Long';if(t.includes('lactate'))return 'Lactate';if(t.includes('marathon-pace'))return 'Marathon-pace';if(t.includes('vo2'))return 'VO2max';if(t.includes('tune-up'))return 'Tune-up';return 'General';}
 function extractMiles(text){const m=String(text||'').match(/(\d+(?:\.\d+)?)\s*mi\b/i);return m?Number(m[1]):0;}
 function volumeMiles(volume){const m=String(volume||'').match(/(\d+(?:\.\d+)?)(?:-\d+)?\s*mi/i);return m?Number(m[1]):0;}
-function completionKey(internalWeek,day){const s=getState();return `mtc_done_${els.mileage.value}_${els.duration.value}_${els.raceDate.value}_${internalWeek}_${day}`;}
+function completionKey(internalWeek,day){const stu=activeStudent();return `mtc_done_${stu.id}_${els.mileage.value}_${els.duration.value}_${els.raceDate.value}_${internalWeek}_${day}`;}
 function isDone(internalWeek,day){return safeGet(completionKey(internalWeek,day))==='1';}
 function toggleDone(internalWeek,day){safeSet(completionKey(internalWeek,day),isDone(internalWeek,day)?'0':'1');refreshAll();}
-function saveSettings(){safeSet('mtc_raceDate',els.raceDate.value);safeSet('mtc_mileage',els.mileage.value);safeSet('mtc_duration',els.duration.value);safeSet('mtc_raceName',els.raceName.value);}
-function loadSettings(){const d=safeGet('mtc_raceDate'),m=safeGet('mtc_mileage'),dur=safeGet('mtc_duration'),rn=safeGet('mtc_raceName'); if(d)els.raceDate.value=d; if(m)els.mileage.value=m; if(dur)els.duration.value=dur; if(rn)els.raceName.value=rn;}
+function saveSettings(){persistActiveStudent();renderStudentControls();}
+function loadSettings(){const stu=activeStudent();syncFormFromStudent(stu);renderStudentControls();}
 function findWorkoutByDate(date,race,plan){const internal=currentInternalWeek(race,plan); if(internal===null)return null; const dayIndex=(stripTime(date)-weekMonday(race,internal))/(86400000); if(dayIndex<0||dayIndex>6)return null; const day=DAY_NAMES[Math.round(dayIndex)]; const week=plan[String(internal)]; return week&&week.days?{...week.days[day],day,internalWeek:internal,date}:null;}
 function renderDay(day,item,d,internalWeek){const workout=item?.workout||'—';const type=classify(workout);const today=sameDate(d,new Date())?' today':'';const done=isDone(internalWeek,day);return `<div class="day${today}"><div class="date">${esc(day.slice(0,3))}<small>${esc(dateLabel(d))}</small></div><div class="workout"><span class="type ${esc(type)}">${esc(type)}</span>${esc(workout)}</div><button class="check ${done?'done':''}" onclick="toggleDone(${internalWeek},'${day}')" aria-label="Mark complete">${done?'✓':''}</button></div>`;}
 function renderWeekCard(title,internalWeek,race,showCurrent){const plan=selectedPlan();const week=plan[String(internalWeek)];if(!week)return `<div class="card"><div class="empty">No data found for week ${displayWeekNum(internalWeek)}.</div></div>`;const monday=weekMonday(race,internalWeek),sunday=weekSunday(race,internalWeek);let rows='';DAY_NAMES.forEach((day,i)=>{const d=addDays(monday,i);const item=week.days?.[day]||{workout:'—'};rows+=renderDay(day,item,d,internalWeek);});const weekly=week.volume||'';const label=internalWeek===0?'Week 1 • Race Week':`Week ${displayWeekNum(internalWeek)} to Goal`;return `<div class="card" id="week-${internalWeek}"><div class="week-title"><div><h2>${esc(title)}</h2><p>${esc(fullDateLabel(monday))} – ${esc(fullDateLabel(sunday))}</p></div><span class="pill">${showCurrent?'⭐ ':''}${esc(label)}</span></div><span class="pill">📊 ${esc(weekly)}</span>${rows}</div>`;}
@@ -160,9 +188,11 @@ function renderRemainingPlan(){const s=getState();if(!s.race){els.planOutput.inn
 function refreshAll(){saveSettings();refreshHome();renderThisWeek();renderRemainingPlan();}
 function showTab(name){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));$(name).classList.add('active');$('tab-'+name).classList.add('active');safeSet('mtc_tab',name);refreshAll();window.scrollTo({top:0,behavior:'smooth'});}
 function resetCompletion(){if(!confirm('Clear all workout checkmarks for this browser?'))return;try{Object.keys(localStorage).filter(k=>k.startsWith('mtc_done_')).forEach(k=>localStorage.removeItem(k));}catch(e){}refreshAll();}
-['change','input'].forEach(evt=>{els.raceDate.addEventListener(evt,refreshAll);els.mileage.addEventListener(evt,refreshAll);els.duration.addEventListener(evt,refreshAll);els.raceName.addEventListener(evt,refreshAll);});
+['change','input'].forEach(evt=>{els.studentName.addEventListener(evt,refreshAll);els.raceDate.addEventListener(evt,refreshAll);els.mileage.addEventListener(evt,refreshAll);els.duration.addEventListener(evt,refreshAll);els.raceName.addEventListener(evt,refreshAll);});
+els.studentSelect.addEventListener('change',()=>selectStudent(els.studentSelect.value));
 loadSettings();
 if(!els.raceName.value) els.raceName.value='Next Marathon';
+renderStudentControls();
 refreshAll();
 showTab(safeGet('mtc_tab')||'home');
 </script>
