@@ -69,6 +69,20 @@ button.primary{background:linear-gradient(135deg,var(--yellow),var(--yellow2));c
 .student-card span{display:block;color:var(--muted);font-size:12px;margin-top:3px}
 .student-actions{display:flex;gap:8px;flex-wrap:wrap}
 .student-actions button{min-height:36px;padding:8px 10px;border-radius:12px;font-size:12px}
+
+.coach-grid{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
+.coach-card{background:#0b0f16;border:1px solid var(--line);border-radius:20px;padding:14px;cursor:pointer}
+.coach-card.active{border-color:rgba(250,204,21,.55);background:rgba(250,204,21,.08)}
+.coach-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.coach-name{font-size:17px;font-weight:900}
+.coach-meta{color:var(--muted);font-size:12px;margin-top:4px;line-height:1.35}
+.coach-workout{margin-top:12px;white-space:pre-line;line-height:1.28;font-size:14px}
+.coach-status{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.badge{border-radius:999px;padding:5px 8px;font-size:11px;font-weight:900;border:1px solid var(--line);background:#121826;color:var(--text)}
+.badge.green{background:rgba(34,197,94,.13);border-color:rgba(34,197,94,.45);color:#bbf7d0}
+.badge.yellow{background:rgba(250,204,21,.13);border-color:rgba(250,204,21,.45);color:#fde68a}
+.badge.red{background:rgba(239,68,68,.13);border-color:rgba(239,68,68,.45);color:#fecaca}
+textarea{appearance:none;width:100%;min-height:92px;font-size:15px;color:var(--text);background:#0b0f16;border:1px solid var(--line);border-radius:16px;padding:13px;font-family:inherit}
 @media(max-width:430px){.settings-grid{grid-template-columns:1fr}.kpi-grid{grid-template-columns:1fr 1fr}.day{grid-template-columns:68px 1fr 32px}h1{font-size:23px}}
 </style>
 </head>
@@ -94,12 +108,25 @@ button.primary{background:linear-gradient(135deg,var(--yellow),var(--yellow2));c
     </div>
   </section>
 
+  <section id="coach" class="screen">
+    <div class="card hero">
+      <div class="week-title"><div><h2>Coach Dashboard</h2><p>Quick view of every student’s current week and today’s workout.</p></div><span class="pill">Team View</span></div>
+      <div class="kpi-grid">
+        <div class="kpi"><b id="coachTotal">—</b><span>Students</span></div>
+        <div class="kpi"><b id="coachDueToday">—</b><span>Workouts today</span></div>
+        <div class="kpi"><b id="coachRacingSoon">—</b><span>Races ≤ 14 days</span></div>
+        <div class="kpi"><b id="coachCompletedToday">—</b><span>Done today</span></div>
+      </div>
+    </div>
+    <div id="coachOutput"></div>
+  </section>
+
   <section id="week" class="screen"><div id="weekOutput"></div></section>
   <section id="plan" class="screen"><div id="planOutput"></div></section>
 
   <section id="settings" class="screen">
     <div class="card">
-      <div class="week-title"><div><h2>Students & Plans</h2><p>Save one race plan per coaching student. Data stays on this phone/browser.</p></div><span class="pill">v1.1.0</span></div>
+      <div class="week-title"><div><h2>Students & Plans</h2><p>Save one race plan per coaching student. Data stays on this phone/browser.</p></div><span class="pill">v1.2.0</span></div>
       <div class="settings-grid">
         <div class="field full"><label>Active student</label><select id="studentSelect"></select></div>
         <div class="field full"><label>Student name</label><input id="studentName" type="text" placeholder="Student name"></div>
@@ -114,6 +141,9 @@ button.primary{background:linear-gradient(135deg,var(--yellow),var(--yellow2));c
         <button class="secondary" onclick="duplicateStudent()">Duplicate</button>
         <button class="secondary" onclick="deleteStudent()">Delete</button>
         <button class="secondary" onclick="resetCompletion()">Reset Checks</button>
+        <button class="secondary" onclick="exportBackup()">Export Backup</button>
+        <button class="secondary" onclick="document.getElementById('importFile').click()">Import Backup</button>
+        <input id="importFile" type="file" accept="application/json,.json" style="display:none" onchange="importBackup(event)">
       </div>
       <div id="studentList" class="student-list"></div>
     </div>
@@ -121,9 +151,10 @@ button.primary{background:linear-gradient(135deg,var(--yellow),var(--yellow2));c
   </section>
 </div>
 
-<nav class="nav"><div class="nav-inner">
+<nav class="nav"><div class="nav-inner" style="grid-template-columns:repeat(5,1fr)">
   <button id="tab-home" class="active" onclick="showTab('home')"><span class="ico">🏠</span>Home</button>
-  <button id="tab-week" onclick="showTab('week')"><span class="ico">📅</span>This Week</button>
+  <button id="tab-coach" onclick="showTab('coach')"><span class="ico">👥</span>Coach</button>
+  <button id="tab-week" onclick="showTab('week')"><span class="ico">📅</span>Week</button>
   <button id="tab-plan" onclick="showTab('plan')"><span class="ico">🗓</span>Plan</button>
   <button id="tab-settings" onclick="showTab('settings')"><span class="ico">⚙️</span>Settings</button>
 </div></nav>
@@ -135,7 +166,7 @@ const $ = id => document.getElementById(id);
 const els = {
   studentSelect:$('studentSelect'), studentName:$('studentName'), raceDate:$('raceDate'), mileage:$('mileage'), duration:$('duration'), raceName:$('raceName'),
   daysToRace:$('daysToRace'), currentWeekKpi:$('currentWeekKpi'), planKpi:$('planKpi'), weeklyMileageKpi:$('weeklyMileageKpi'),
-  todayWorkout:$('todayWorkout'), tomorrowWorkout:$('tomorrowWorkout'), weekOutput:$('weekOutput'), planOutput:$('planOutput'), weekProgress:$('weekProgress'), studentList:$('studentList')
+  todayWorkout:$('todayWorkout'), tomorrowWorkout:$('tomorrowWorkout'), weekOutput:$('weekOutput'), planOutput:$('planOutput'), weekProgress:$('weekProgress'), studentList:$('studentList'), coachOutput:$('coachOutput'), coachTotal:$('coachTotal'), coachDueToday:$('coachDueToday'), coachRacingSoon:$('coachRacingSoon'), coachCompletedToday:$('coachCompletedToday')
 };
 function safeGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function safeSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
@@ -148,6 +179,17 @@ function activeStudent(){const id=getActiveStudentId();return getStudents().find
 function collectFormStudent(){const current=activeStudent()||{};return {id:current.id||makeId(),name:els.studentName.value.trim()||'Unnamed Student',raceName:els.raceName.value.trim()||'Next Marathon',raceDate:els.raceDate.value,mileage:els.mileage.value,duration:els.duration.value};}
 function persistActiveStudent(){let list=getStudents();const updated=collectFormStudent();list=list.map(s=>s.id===updated.id?updated:s);saveStudents(list);safeSet('mtc_activeStudent',updated.id);safeSet('mtc_raceDate',updated.raceDate);safeSet('mtc_mileage',updated.mileage);safeSet('mtc_duration',updated.duration);safeSet('mtc_raceName',updated.raceName);}
 function syncFormFromStudent(student){if(!student)return;els.studentName.value=student.name||'';els.raceName.value=student.raceName||'';els.raceDate.value=student.raceDate||'';els.mileage.value=student.mileage||'55';els.duration.value=student.duration||'18';}
+function planForStudent(stu){return PLAN_DATA[`${stu.mileage||'55'} MPW — ${stu.duration||'18'}-Week Plan`]||{};}
+function currentInternalWeekForStudent(stu){const race=parseLocalDate(stu.raceDate||'');const plan=planForStudent(stu);if(!race)return null;const raceWeekMonday=addDays(stripTime(race),-6);const todayMonday=startOfMondayWeek(new Date());const wk=Math.round((raceWeekMonday-todayMonday)/(7*86400000));return Math.min(maxInternalWeek(plan),Math.max(0,wk));}
+function workoutForStudentDate(stu,date){const race=parseLocalDate(stu.raceDate||'');const plan=planForStudent(stu);const internal=currentInternalWeekForStudent(stu);if(!race||internal===null)return null;const dayIndex=(stripTime(date)-weekMonday(race,internal))/(86400000);if(dayIndex<0||dayIndex>6)return null;const day=DAY_NAMES[Math.round(dayIndex)];const week=plan[String(internal)];return week&&week.days?{...week.days[day],day,internalWeek:internal,date,week}:null;}
+function completionKeyForStudent(stu,internalWeek,day){return `mtc_done_${stu.id}_${stu.mileage||'55'}_${stu.duration||'18'}_${stu.raceDate||''}_${internalWeek}_${day}`;}
+function isDoneForStudent(stu,internalWeek,day){return safeGet(completionKeyForStudent(stu,internalWeek,day))==='1';}
+function studentSummary(stu){const race=parseLocalDate(stu.raceDate||'');const plan=planForStudent(stu);const wk=currentInternalWeekForStudent(stu);const today=workoutForStudentDate(stu,new Date());const left=race?daysUntilRace(race):null;let doneToday=false;if(today) doneToday=isDoneForStudent(stu,today.internalWeek,today.day);return {race,plan,wk,today,left,doneToday};}
+function openStudentFromCoach(id){selectStudent(id);showTab('home');}
+function renderCoachDashboard(){if(!els.coachOutput)return;persistActiveStudent();const list=getStudents();let due=0,soon=0,done=0;const activeId=getActiveStudentId();const cards=list.map(stu=>{const sum=studentSummary(stu);if(sum.today && classify(sum.today.workout)!=='Rest')due++;if(sum.doneToday)done++;if(sum.left!==null && sum.left>=0 && sum.left<=14)soon++;const wkText=sum.wk===null?'No date':(sum.wk===0?'Week 1':`Week ${displayWeekNum(sum.wk)}`);const dateText=stu.raceDate?stu.raceDate:'No race date';const raceText=stu.raceName||'Next Marathon';const workout=sum.today?.workout||'Set race date to see today’s workout.';const status=sum.doneToday?'green':(sum.today?'yellow':'red');const statusText=sum.doneToday?'Done today':(sum.today?'Due today':'Needs setup');return `<div class="coach-card ${stu.id===activeId?'active':''}" onclick="openStudentFromCoach('${esc(stu.id)}')"><div class="coach-top"><div><div class="coach-name">${esc(stu.name||'Unnamed Student')}</div><div class="coach-meta">${esc(raceText)} • ${esc(dateText)} • ${esc(stu.mileage||'55')}/${esc(stu.duration||'18')} • ${esc(wkText)}</div></div><span class="badge ${status}">${esc(statusText)}</span></div><div class="coach-workout"><span class="type ${esc(classify(workout))}">${esc(classify(workout))}</span>${esc(workout)}</div><div class="coach-status"><span class="badge">🏁 ${sum.left===null?'—':(sum.left<0?'Done':sum.left+' days')}</span><span class="badge">📊 ${esc(sum.today?.week?.volume||'—')}</span></div></div>`;}).join('');els.coachTotal.textContent=list.length;els.coachDueToday.textContent=due;els.coachRacingSoon.textContent=soon;els.coachCompletedToday.textContent=done;els.coachOutput.innerHTML=`<div class="coach-grid">${cards}</div>`;}
+function exportBackup(){persistActiveStudent();const payload={app:'Maniacs Training Companion',version:'1.2.0',exportedAt:new Date().toISOString(),students:getStudents(),activeStudentId:getActiveStudentId(),completion:{}};try{Object.keys(localStorage).filter(k=>k.startsWith('mtc_done_')).forEach(k=>payload.completion[k]=localStorage.getItem(k));}catch(e){}const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='maniacs-training-companion-backup.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),500);}
+function importBackup(evt){const file=evt.target.files&&evt.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const payload=JSON.parse(reader.result);if(!payload.students||!Array.isArray(payload.students))throw new Error('No students found');if(!confirm('Import backup and replace current students on this device?'))return;saveStudents(payload.students);if(payload.activeStudentId)safeSet('mtc_activeStudent',payload.activeStudentId);if(payload.completion&&typeof payload.completion==='object'){Object.keys(payload.completion).forEach(k=>{if(k.startsWith('mtc_done_'))safeSet(k,payload.completion[k]);});}loadSettings();refreshAll();showTab('coach');alert('Backup imported.');}catch(err){alert('Could not import this backup file.');}finally{evt.target.value='';}};reader.readAsText(file);}
+
 function renderStudentControls(){const list=getStudents();const activeId=getActiveStudentId();els.studentSelect.innerHTML=list.map(s=>`<option value="${esc(s.id)}" ${s.id===activeId?'selected':''}>${esc(s.name||'Unnamed Student')} — ${esc(s.raceName||'Race')}</option>`).join('');els.studentList.innerHTML=list.map(s=>`<div class="student-card ${s.id===activeId?'active':''}"><div><b>${esc(s.name||'Unnamed Student')}</b><span>${esc(s.raceName||'Race')} • ${esc(s.raceDate||'No date')} • ${esc(s.mileage||'55')}/${esc(s.duration||'18')}</span></div><div class="student-actions"><button class="secondary" onclick="selectStudent('${s.id}')">Open</button></div></div>`).join('');}
 function selectStudent(id){persistActiveStudent();safeSet('mtc_activeStudent',id);syncFormFromStudent(activeStudent());renderStudentControls();refreshAll();showTab('home');}
 function addStudent(){persistActiveStudent();const name=prompt('Student name?','New Student');if(name===null)return;const list=getStudents();const ns={id:makeId(),name:(name.trim()||'New Student'),raceName:'Next Marathon',raceDate:'',mileage:'55',duration:'18'};list.push(ns);saveStudents(list);safeSet('mtc_activeStudent',ns.id);syncFormFromStudent(ns);renderStudentControls();refreshAll();showTab('settings');}
@@ -185,7 +227,7 @@ function renderWeekCard(title,internalWeek,race,showCurrent){const plan=selected
 function refreshHome(){const s=getState();els.planKpi.textContent=`${els.mileage.value}/${els.duration.value}`;if(!s.race){els.daysToRace.textContent='—';els.currentWeekKpi.textContent='—';els.weeklyMileageKpi.textContent='—';els.todayWorkout.textContent='Set race date in Settings.';els.tomorrowWorkout.textContent='—';els.weekProgress.style.width='0%';return;}const wk=currentInternalWeek(s.race,s.plan);const left=daysUntilRace(s.race);els.daysToRace.textContent=left<0?'Done':left;els.currentWeekKpi.textContent=wk===0?'Week 1':`Week ${displayWeekNum(wk)}`;const week=s.plan[String(wk)]||{};els.weeklyMileageKpi.textContent=week.volume||'—';const today=findWorkoutByDate(new Date(),s.race,s.plan);const tomorrow=findWorkoutByDate(addDays(new Date(),1),s.race,s.plan);els.todayWorkout.textContent=today?.workout||'No workout found for today.';els.tomorrowWorkout.textContent=tomorrow?.workout||'—';const planned=volumeMiles(week.volume);let doneMiles=0,doneCount=0,totalDays=0;DAY_NAMES.forEach(day=>{const item=week.days?.[day]; if(item){totalDays++; if(isDone(wk,day)){doneCount++; doneMiles+=extractMiles(item.workout);}}});const pct=planned?Math.min(100,Math.round(doneMiles/planned*100)):(totalDays?Math.round(doneCount/totalDays*100):0);els.weekProgress.style.width=pct+'%';}
 function renderThisWeek(){const s=getState();if(!s.race){els.weekOutput.innerHTML='<div class="card"><div class="empty">Set your marathon date in Settings.</div></div>';return;}const wk=currentInternalWeek(s.race,s.plan);const next=Math.max(0,wk-1);els.weekOutput.innerHTML=renderWeekCard('This Week',wk,s.race,true)+(next!==wk?renderWeekCard('Next Week',next,s.race,false):'');}
 function renderRemainingPlan(){const s=getState();if(!s.race){els.planOutput.innerHTML='<div class="card"><div class="empty">Set your marathon date in Settings.</div></div>';return;}const wk=currentInternalWeek(s.race,s.plan);const nums=Object.keys(s.plan).map(Number).filter(n=>Number.isFinite(n)&&n<=wk).sort((a,b)=>b-a);els.planOutput.innerHTML=nums.map(n=>renderWeekCard(n===wk?'Current Week':(n===0?'Race Week':`Week ${displayWeekNum(n)} to Goal`),n,s.race,n===wk)).join('')||'<div class="card"><div class="empty">No remaining weeks found.</div></div>';}
-function refreshAll(){saveSettings();refreshHome();renderThisWeek();renderRemainingPlan();}
+function refreshAll(){saveSettings();refreshHome();renderThisWeek();renderRemainingPlan();renderCoachDashboard();}
 function showTab(name){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));$(name).classList.add('active');$('tab-'+name).classList.add('active');safeSet('mtc_tab',name);refreshAll();window.scrollTo({top:0,behavior:'smooth'});}
 function resetCompletion(){if(!confirm('Clear all workout checkmarks for this browser?'))return;try{Object.keys(localStorage).filter(k=>k.startsWith('mtc_done_')).forEach(k=>localStorage.removeItem(k));}catch(e){}refreshAll();}
 ['change','input'].forEach(evt=>{els.studentName.addEventListener(evt,refreshAll);els.raceDate.addEventListener(evt,refreshAll);els.mileage.addEventListener(evt,refreshAll);els.duration.addEventListener(evt,refreshAll);els.raceName.addEventListener(evt,refreshAll);});
