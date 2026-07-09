@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bus 131 Commute</title>
+<style>
+  :root{--bg:#0f172a;--card:#111827;--muted:#94a3b8;--text:#f8fafc;--accent:#22c55e;--warn:#f59e0b;--danger:#ef4444;--border:#253044;}
+  *{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:linear-gradient(180deg,#111827,#020617);color:var(--text);min-height:100vh;}
+  .app{max-width:520px;margin:0 auto;padding:18px 14px 36px}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.title{font-size:26px;font-weight:800}.clock{text-align:right;color:var(--muted);font-size:13px}.card{background:rgba(17,24,39,.92);border:1px solid var(--border);border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 12px 30px rgba(0,0,0,.25)}button{width:100%;border:0;border-radius:16px;padding:15px 14px;margin:8px 0;background:#1f2937;color:var(--text);font-size:16px;font-weight:750;text-align:left;cursor:pointer;border:1px solid var(--border)}button:active{transform:scale(.99)}.primary{background:#14532d;border-color:#166534}.secondary{background:#0f172a}.row{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}.row:last-child{border-bottom:0}.time{font-size:22px;font-weight:800}.label{font-size:12px;color:var(--muted);margin-top:3px}.arrow{color:var(--muted);font-weight:800}.badge{display:inline-block;padding:4px 9px;border-radius:999px;font-size:12px;font-weight:800;margin-bottom:6px}.green{background:#064e3b;color:#bbf7d0}.orange{background:#78350f;color:#fde68a}.red{background:#7f1d1d;color:#fecaca}.hidden{display:none}.muted{color:var(--muted);font-size:14px;line-height:1.4}.screenTitle{font-size:21px;font-weight:850;margin:10px 0 4px}.route{color:var(--muted);font-size:14px;margin-bottom:12px}.footer{color:var(--muted);font-size:12px;line-height:1.45;margin-top:16px}.empty{padding:18px;text-align:center;color:var(--muted)}.pill{display:inline-block;padding:4px 8px;border:1px solid var(--border);border-radius:999px;color:var(--muted);font-size:12px;margin-left:6px}.gate{color:#bbf7d0;font-size:13px;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top"><div class="title">🚌 Bus 131</div><div class="clock"><div id="nowText">--</div><div>Weekdays only</div></div></div>
+
+  <section id="home" class="card">
+    <div class="screenTitle">Commute</div>
+    <button class="primary" onclick="openDirection('going')">🚍 Going<br><span class="muted">Ernston Rd & Washington Rd → Port Authority</span></button>
+    <button onclick="openDirection('back')">🏠 Coming Back<br><span class="muted">Port Authority → Ernston Rd & Washington Rd</span></button>
+    <div class="footer">Default view shows buses in the next 2 hours based on your current time. Use Full Schedule to see all listed weekday trips.</div>
+  </section>
+
+  <section id="scheduleScreen" class="hidden">
+    <div class="card">
+      <button class="secondary" onclick="showHome()">← Back</button>
+      <div class="screenTitle" id="dirTitle"></div>
+      <div class="route" id="dirRoute"></div>
+      <button id="toggleBtn" onclick="toggleFull()">📅 View Full Schedule</button>
+      <div id="list"></div>
+    </div>
+  </section>
+</div>
+<script>
+const schedules = {
+  going: {
+    title: '🚍 Going',
+    route: 'Ernston Rd & Washington Rd → Port Authority',
+    note: '',
+    trips: [
+      ['5:40 AM','6:26 AM'], ['6:14 AM','7:00 AM'], ['6:29 AM','7:15 AM'], ['6:44 AM','7:30 AM'],
+      ['6:59 AM','7:45 AM'], ['7:11 AM','7:57 AM'], ['7:23 AM','8:09 AM'], ['7:35 AM','8:21 AM'],
+      ['7:50 AM','8:36 AM'], ['8:05 AM','8:51 AM'], ['8:20 AM','9:06 AM'], ['8:40 AM','9:26 AM']
+    ]
+  },
+  back: {
+    title: '🏠 Coming Back',
+    route: 'Port Authority → Ernston Rd & Washington Rd',
+    note: 'Route 131 departs Port Authority from Gate 317.',
+    trips: [
+      ['3:30 PM','4:21 PM'], ['4:00 PM','4:53 PM'], ['4:30 PM','5:23 PM'], ['4:50 PM','5:43 PM'],
+      ['5:10 PM','6:03 PM'], ['5:30 PM','6:22 PM'], ['5:50 PM','6:41 PM'], ['6:10 PM','7:00 PM'],
+      ['6:30 PM','7:20 PM'], ['7:00 PM','7:50 PM'], ['7:30 PM','8:20 PM'], ['8:30 PM','9:20 PM']
+    ]
+  }
+};
+let currentDir='going', full=false;
+function parseToday(t){const [hm,ap]=t.split(' ');let [h,m]=hm.split(':').map(Number);if(ap==='PM'&&h!==12)h+=12;if(ap==='AM'&&h===12)h=0;const d=new Date();d.setHours(h,m,0,0);return d;}
+function minsUntil(t){return Math.round((parseToday(t)-new Date())/60000)}
+function isWeekend(){const d=new Date().getDay();return d===0||d===6}
+function badge(min){if(min<5)return ['red','Leaves in '+min+' min']; if(min<15)return ['orange','Leaves in '+min+' min']; return ['green','Leaves in '+min+' min'];}
+function render(){
+  const data=schedules[currentDir]; document.getElementById('dirTitle').textContent=data.title; document.getElementById('dirRoute').textContent=data.route; document.getElementById('toggleBtn').textContent= full ? '⏱ Show Next 2 Hours' : '📅 View Full Schedule';
+  const list=document.getElementById('list'); list.innerHTML='';
+  if(data.note){const g=document.createElement('div');g.className='gate';g.textContent=data.note;list.appendChild(g)}
+  if(isWeekend()){list.innerHTML += '<div class="empty">No weekend service listed for this route.</div>'; return;}
+  let trips=data.trips.map(x=>({dep:x[0],arr:x[1],min:minsUntil(x[0])}));
+  if(!full) trips=trips.filter(x=>x.min>=0 && x.min<=120);
+  if(trips.length===0){list.innerHTML += '<div class="empty">No buses in the next 2 hours. Tap Full Schedule.</div>'; return;}
+  trips.forEach((x,i)=>{const r=document.createElement('div');r.className='row';let b=''; if(!full && i===0){const bb=badge(x.min);b=`<span class="badge ${bb[0]}">${bb[1]}</span>`;} r.innerHTML=`<div>${b}<div class="time">${x.dep}</div><div class="label">Depart</div></div><div class="arrow">→</div><div><div class="time">${x.arr}</div><div class="label">Arrive</div></div>`; list.appendChild(r);});
+}
+function openDirection(dir){currentDir=dir;full=false;document.getElementById('home').classList.add('hidden');document.getElementById('scheduleScreen').classList.remove('hidden');render();}
+function showHome(){document.getElementById('scheduleScreen').classList.add('hidden');document.getElementById('home').classList.remove('hidden');}
+function toggleFull(){full=!full;render();}
+function tick(){document.getElementById('nowText').textContent=new Date().toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}); if(!document.getElementById('scheduleScreen').classList.contains('hidden')) render();}
+tick(); setInterval(tick,60000);
+</script>
+</body>
+</html>
