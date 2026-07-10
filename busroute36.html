@@ -23,7 +23,7 @@
     .choice{cursor:pointer}.choice:active{transform:scale(.985)}.choice-title{font-size:20px;font-weight:800;margin-bottom:6px}
     button{border:0;border-radius:14px;padding:13px 16px;font-size:16px;font-weight:800;cursor:pointer}
     .primary{background:var(--green);color:#062412}.secondary{background:var(--card2);color:var(--text);border:1px solid var(--border)}
-    .location-actions,.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}.location-actions button,.toolbar button{flex:1}
+    .location-actions,.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}.location-actions button,.toolbar button{flex:1}.planner{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:14px}.planner label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.planner select{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:14px;padding:13px 14px;font-size:16px;font-weight:750}
     .header-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
     .header-row h2{margin:0}.pill{font-size:12px;padding:6px 9px;border-radius:999px;background:rgba(69,212,131,.14);color:#8af0b2}
     .trip{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;padding:14px 0;border-bottom:1px solid var(--border)}
@@ -60,6 +60,15 @@
     <div class="toolbar">
       <button class="secondary" onclick="goBack()">← Back</button>
       <button id="viewToggle" class="secondary" onclick="toggleView()">View Full Schedule</button>
+    </div>
+
+    <div class="planner">
+      <label for="planDate">Plan schedule for</label>
+      <select id="planDate" onchange="changePlanDate(this.value)">
+        <option value="today">Today</option>
+        <option value="nextMonday">Next Monday</option>
+        <option value="nextFriday">Next Friday</option>
+      </select>
     </div>
 
     <div class="card">
@@ -117,6 +126,7 @@ const schedules={
 
 let currentDirection="going";
 let fullSchedule=false;
+let planMode="today";
 
 function parseToday(str){
   const [time,ampm]=str.split(" ");
@@ -126,7 +136,7 @@ function parseToday(str){
   const d=new Date();d.setHours(h,m,0,0);return d;
 }
 
-function serviceType(date=new Date()){
+function serviceType(date){
   const day=date.getDay();
   if(day===5)return"friday";
   if(day>=1&&day<=4)return"monThu";
@@ -134,10 +144,49 @@ function serviceType(date=new Date()){
 }
 
 function formatCountdown(totalMinutes){
-  if(totalMinutes<60)return `${totalMinutes} min`;
-  const hours=Math.floor(totalMinutes/60);
-  const minutes=totalMinutes%60;
-  return minutes===0?`${hours} hr`:`${hours} hr ${minutes} min`;
+  const minutes=Math.max(0,Math.ceil(totalMinutes));
+  const days=Math.floor(minutes/1440);
+  const remainingAfterDays=minutes%1440;
+  const hours=Math.floor(remainingAfterDays/60);
+  const mins=remainingAfterDays%60;
+  const parts=[];
+  if(days)parts.push(`${days} day${days===1?"":"s"}`);
+  if(hours)parts.push(`${hours} hr`);
+  if(mins||parts.length===0)parts.push(`${mins} min`);
+  return parts.join(" ");
+}
+
+function nextWeekday(targetDay){
+  const now=new Date();
+  const result=new Date(now);
+  result.setHours(0,0,0,0);
+  let delta=(targetDay-result.getDay()+7)%7;
+  if(delta===0)delta=7;
+  result.setDate(result.getDate()+delta);
+  return result;
+}
+
+function selectedServiceDate(){
+  if(planMode==="nextMonday")return nextWeekday(1);
+  if(planMode==="nextFriday")return nextWeekday(5);
+  return new Date();
+}
+
+function tripDateFor(serviceDate,timeStr){
+  const [time,ampm]=timeStr.split(" ");
+  let [h,m]=time.split(":").map(Number);
+  if(ampm==="PM"&&h!==12)h+=12;
+  if(ampm==="AM"&&h===12)h=0;
+  const d=new Date(serviceDate);
+  d.setHours(h,m,0,0);
+  return d;
+}
+
+function changePlanDate(value){
+  planMode=value;
+  fullSchedule=true;
+  document.getElementById("viewToggle").textContent="Show Next 2 Hours";
+  render();
 }
 
 function distanceMiles(aLat,aLon,bLat,bLon){
@@ -177,7 +226,8 @@ function requestLocation(){
 }
 
 function openDirection(dir){
-  currentDirection=dir;fullSchedule=false;
+  currentDirection=dir;fullSchedule=false;planMode="today";
+  document.getElementById("planDate").value="today";
   document.getElementById("home").classList.add("hidden");
   document.getElementById("schedule").classList.remove("hidden");
   document.getElementById("viewToggle").textContent="View Full Schedule";
@@ -197,7 +247,8 @@ function toggleView(){
 
 function render(){
   const isGoing=currentDirection==="going";
-  const service=serviceType();
+  const serviceDate=selectedServiceDate();
+  const service=serviceType(serviceDate);
   const title=document.getElementById("directionTitle");
   const route=document.getElementById("directionRoute");
   const pill=document.getElementById("dayPill");
@@ -217,10 +268,11 @@ function render(){
   }
 
   weekend.classList.add("hidden");
-  pill.textContent=service==="friday"?"Friday schedule":"Mon–Thu schedule";
+  const dateLabel=serviceDate.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+  pill.textContent=`${service==="friday"?"Friday":"Mon–Thu"} · ${dateLabel}`;
 
   const now=new Date();
-  const all=schedules[service][currentDirection].map(t=>({...t,departDate:parseToday(t.d)}));
+  const all=schedules[service][currentDirection].map(t=>({...t,departDate:tripDateFor(serviceDate,t.d)}));
   const visible=fullSchedule?all:all.filter(t=>{
     const mins=(t.departDate-now)/60000;
     return mins>=0&&mins<=120;
@@ -235,17 +287,19 @@ function render(){
 
   const lastTrip=all[all.length-1];
   list.innerHTML=visible.map((t,i)=>{
-    const mins=Math.max(0,Math.ceil((t.departDate-now)/60000));
-    const countdown=fullSchedule?"":(mins===0?"Leaving now":`Leaves in ${formatCountdown(mins)}`);
+    const rawMins=(t.departDate-now)/60000;
+    const countdown=rawMins<=-1
+      ?"Departed"
+      :(rawMins<1?"Leaving now":`Leaves in ${formatCountdown(rawMins)}`);
     const gate=!isGoing?`<span class="gate">🚪 Gate ${t.g}</span>`:"";
     const isLast=t.d===lastTrip.d&&t.a===lastTrip.a;
-    const lastBadge=isLast?`<span class="last-bus">🙏 Last Bus</span>`:"";
+    const lastBadge=isLast?`<span class="last-bus">Last Bus</span>`:"";
     return `
       <div class="trip ${i===0&&!fullSchedule?"next":""}">
         <div><div class="label">Depart</div><div class="time">${t.d}</div></div>
         <div class="arrow">→</div>
         <div class="right"><div class="label">Arrive</div><div class="time">${t.a}</div></div>
-        <div class="meta">${gate}${lastBadge}${countdown?`<span>${countdown}</span>`:""}</div>
+        <div class="meta">${gate}${lastBadge}<span>${countdown}</span></div>
       </div>`;
   }).join("");
 }
