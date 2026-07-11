@@ -249,7 +249,7 @@ function renderMatches(){
         <div><label>${esc(m.teamB)} score</label><input id="b-${m.id}" type="number" min="0" max="20" value="${existing?.scoreB??0}" ${locked?"disabled":""}></div>
       </div>
       <input type="hidden" id="c-${m.id}" value="${existing?.choice||""}">
-      ${!locked?`<button class="btn primary full" data-save="${m.id}">${existing?"Update My Pick":"Save My Pick"}</button>`:`<button class="btn secondary full" disabled>Picks Locked</button>`}
+      ${!locked?`<button class="btn primary full" data-save="${m.id}">${existing?"Update My Pick":"Save My Pick"}</button>`:`<button class="btn secondary full" disabled>Picks Locked</button><div class="small" style="margin-top:8px">Admin must reopen this match before members can enter or change picks.</div>`}
       ${existing?`<div class="saved">✓ Pick saved: ${esc(m.teamA)} ${existing.scoreA} – ${existing.scoreB} ${esc(m.teamB)}</div>`:""}`
       }
     </div>`;
@@ -312,7 +312,7 @@ function renderAdmin(){
   if(!box)return;
   if(!state.matches.length){box.innerHTML='<div class="empty">No matches.</div>';return}
   box.innerHTML=state.matches.map(m=>`<div class="item">
-    <div class="row"><div><b>${esc(m.teamA)} vs ${esc(m.teamB)}</b><div class="small">${fmt(m.kickoff)}</div></div><span class="badge ${statusInfo(m).cls}">${statusInfo(m).text}</span></div>
+    <div class="row"><div><b>${esc(m.teamA)} vs ${esc(m.teamB)}</b><div class="small">${fmt(m.kickoff)}</div></div><span class="badge ${statusInfo(m).cls}">${statusInfo(m).text}</span></div><label>Kickoff time</label><input id="ko-${m.id}" type="datetime-local" value="${m.kickoff||""}">
     <div class="grid3">
       <div><label>Current ${esc(m.teamA)}</label><input id="ca-${m.id}" type="number" min="0" value="${m.currentScoreA??0}"></div>
       <div><label>Current ${esc(m.teamB)}</label><input id="cb-${m.id}" type="number" min="0" value="${m.currentScoreB??0}"></div>
@@ -320,7 +320,9 @@ function renderAdmin(){
     </div>
     <div class="admin-actions">
       <button class="btn blue" data-live="${m.id}">Update Current Score</button>
-      <button class="btn secondary" data-lock="${m.id}">${m.status==="locked"?"Reopen Picks":"Lock Picks"}</button>
+      <button class="btn secondary" data-reopen="${m.id}">Reopen Picks</button>
+      <button class="btn warn" data-lock="${m.id}">Lock Picks</button>
+      <button class="btn secondary" data-kickoff="${m.id}">Save Kickoff</button>
     </div>
     <div class="grid2">
       <div><label>Final ${esc(m.teamA)}</label><input id="fa-${m.id}" type="number" min="0" value="${m.finalScoreA??m.currentScoreA??0}"></div>
@@ -341,12 +343,27 @@ function renderAdmin(){
     m.status="live";m.locked=true;
     save();toast("Current score updated.");
   });
+  document.querySelectorAll("[data-reopen]").forEach(b=>b.onclick=()=>{
+    const m=state.matches.find(x=>x.id===b.dataset.reopen);
+    m.status="open";
+    m.locked=false;
+    m.final=false;
+    m.minute="";
+    save();
+    toast("Match reopened for picks.");
+  });
   document.querySelectorAll("[data-lock]").forEach(b=>b.onclick=()=>{
     const m=state.matches.find(x=>x.id===b.dataset.lock);
-    if(m.status==="locked"){m.status="open";m.locked=false}
-    else if(m.status==="open"){m.status="locked";m.locked=true}
-    else {toast("Only open or locked matches can be changed here.");return}
+    m.status="locked";
+    m.locked=true;
     save();
+    toast("Picks locked.");
+  });
+  document.querySelectorAll("[data-kickoff]").forEach(b=>b.onclick=()=>{
+    const id=b.dataset.kickoff,m=state.matches.find(x=>x.id===id);
+    m.kickoff=$("ko-"+id).value;
+    save();
+    toast("Kickoff time updated.");
   });
   document.querySelectorAll("[data-final]").forEach(b=>b.onclick=()=>{
     const id=b.dataset.final,m=state.matches.find(x=>x.id===id);
