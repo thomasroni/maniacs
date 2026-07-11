@@ -1,44 +1,75 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Bus Commute</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07111f">
+<title>Bus 131 / 139 Commute</title>
 <style>
-:root{--bg:#0f172a;--card:#111827;--muted:#94a3b8;--text:#f8fafc;--accent:#22c55e;--warn:#f59e0b;--danger:#ef4444;--border:#253044;--blue:#38bdf8}*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:linear-gradient(180deg,#111827,#020617);color:var(--text);min-height:100vh}.app{max-width:560px;margin:0 auto;padding:18px 14px 36px}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.title{font-size:26px;font-weight:850}.clock{text-align:right;color:var(--muted);font-size:13px}.card{background:rgba(17,24,39,.93);border:1px solid var(--border);border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 12px 30px rgba(0,0,0,.25)}button{width:100%;border:0;border-radius:16px;padding:15px 14px;margin:8px 0;background:#1f2937;color:var(--text);font-size:16px;font-weight:750;text-align:left;cursor:pointer;border:1px solid var(--border)}button:active{transform:scale(.99)}.primary{background:#14532d;border-color:#166534}.alt{background:#0c4a6e;border-color:#0369a1}.secondary{background:#0f172a}.smallBtn{font-size:14px;padding:11px 12px;text-align:center}.row{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}.row:last-child{border-bottom:0}.time{font-size:22px;font-weight:850}.label{font-size:12px;color:var(--muted);margin-top:3px}.arrow{color:var(--muted);font-weight:800}.badge{display:inline-block;padding:4px 9px;border-radius:999px;font-size:12px;font-weight:850;margin-bottom:6px}.green{background:#064e3b;color:#bbf7d0}.orange{background:#78350f;color:#fde68a}.red{background:#7f1d1d;color:#fecaca}.blue{background:#0c4a6e;color:#bae6fd}.lastBus{background:#78350f;color:#fde68a;border:1px solid #f59e0b;margin-left:6px}.hidden{display:none}.muted{color:var(--muted);font-size:14px;line-height:1.4}.screenTitle{font-size:21px;font-weight:850;margin:10px 0 4px}.route{color:var(--muted);font-size:14px;margin-bottom:12px}.footer{color:var(--muted);font-size:12px;line-height:1.45;margin-top:16px}.empty{padding:14px;text-align:center;color:var(--muted)}.pill{display:inline-block;padding:4px 8px;border:1px solid var(--border);border-radius:999px;color:#bbf7d0;font-size:12px;margin-left:6px}.gate{color:#bbf7d0;font-size:13px;margin:6px 0}.locStatus{font-size:13px;color:var(--muted);line-height:1.4;margin:8px 0 4px}.stack{display:flex;gap:8px}.stack button{margin:6px 0}.routeName{font-size:13px;color:var(--muted);font-weight:500;margin-top:3px;display:block}.subhead{font-size:13px;font-weight:800;color:#bae6fd;margin:14px 0 2px}.warnBox{border:1px dashed #f59e0b;border-radius:14px;padding:12px;margin:12px 0;color:#fde68a;background:rgba(120,53,15,.25)}
+:root{--bg:#07111f;--card:#111d30;--card2:#17243a;--text:#f8fafc;--muted:#aab6ca;--green:#45d483;--blue:#68a8ff;--border:rgba(255,255,255,.11);--warn:#fbbf24}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(circle at top right,#19375e 0,transparent 34%),linear-gradient(180deg,#07111f,#0c1728);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+.app{max-width:760px;margin:auto;padding:calc(18px + env(safe-area-inset-top)) 16px calc(30px + env(safe-area-inset-bottom))}
+h1{margin:0 0 5px;font-size:28px} .sub{color:var(--muted);margin-bottom:14px}
+.card{background:rgba(17,29,48,.98);border:1px solid var(--border);border-radius:20px;padding:17px;margin-bottom:14px;box-shadow:0 12px 30px rgba(0,0,0,.25)}
+button,select{font:inherit} button{width:100%;border:0;border-radius:14px;padding:13px 14px;font-size:16px;font-weight:800;cursor:pointer;margin:5px 0}
+.primary{background:var(--green);color:#062413} .secondary{background:var(--card2);color:var(--text);border:1px solid var(--border)} .alt{background:#0c4a6e;color:#e0f2fe}
+.direction{text-align:left} .direction small{display:block;color:var(--muted);margin-top:4px;font-weight:500}
+.status{color:var(--muted);font-size:13px;line-height:1.4;margin:8px 0 12px}
+.hidden{display:none!important}
+.toolbar{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
+label{display:block;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:5px 0 6px}
+select{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:14px;padding:13px 14px;font-size:16px;font-weight:750;margin-bottom:10px}
+.titleRow{display:flex;align-items:flex-start;justify-content:space-between;gap:10px} .screenTitle{font-size:22px;font-weight:850} .dayPill{font-size:12px;padding:6px 9px;border-radius:999px;background:rgba(69,212,131,.13);color:#9af1ba;white-space:nowrap}
+.route{color:var(--muted);font-size:14px;line-height:1.45;margin:4px 0 10px}
+.sectionTitle{font-size:14px;color:#b9d6ff;font-weight:850;margin:15px 0 4px}
+.note{color:#bbf7d0;font-size:13px;margin:7px 0 9px}
+.warn{border:1px dashed #f59e0b;background:rgba(120,53,15,.25);color:#fde68a;border-radius:14px;padding:11px;margin:10px 0}
+.trip{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;padding:13px 0;border-bottom:1px solid var(--border)} .trip:last-child{border-bottom:0}
+.trip.next{background:rgba(69,212,131,.07);margin:0 -7px;padding:13px 7px;border-radius:13px}
+.time{font-size:21px;font-weight:850} .right{text-align:right} .arrow{color:var(--muted);font-size:20px}
+.meta{grid-column:1/-1;display:flex;gap:7px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:13px}
+.badge{display:inline-block;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:850}
+.green{background:#064e3b;color:#bbf7d0} .orange{background:#78350f;color:#fde68a} .red{background:#7f1d1d;color:#fecaca} .last{background:rgba(251,191,36,.13);color:#fde68a;border:1px solid rgba(251,191,36,.42)}
+.empty{padding:24px 8px;text-align:center;color:var(--muted)} .footer{font-size:12px;color:var(--muted);line-height:1.5;margin-top:12px}
 </style>
 </head>
 <body>
 <div class="app">
-  <div class="top"><div class="title">🚌 Commute</div><div class="clock"><div id="nowText">--</div><div id="dayLabel">Schedule</div></div></div>
-  <section id="home" class="card"><div class="screenTitle">Choose Direction</div><div id="locationStatus" class="locStatus">Checking your nearest side…</div><div id="directionButtons"></div><div class="stack"><button class="secondary smallBtn" onclick="detectLocation()">📍 Use My Location</button><button class="secondary smallBtn" onclick="swapOrder()">↕️ Swap</button></div><div class="footer">131 is shown first. 139 appears automatically when no 131 bus is available in the next 2 hours, and you can open 139 any time.</div></section>
-  <section id="scheduleScreen" class="hidden">
+<section id="home">
+  <h1>🚌 Bus 131 / 139</h1>
+  <div class="sub">New Jersey ↔ Port Authority</div>
   <div class="card">
-    <button class="secondary" onclick="showHome()">← Back</button>
-    <div class="screenTitle" id="dirTitle"></div>
-    <div class="route" id="dirRoute"></div>
+    <div id="locationStatus" class="status">Choose a direction, or use your location.</div>
+    <button id="locationBtn" class="secondary" type="button">📍 Use My Location</button>
+    <button id="goingBtn" class="primary direction" type="button">Going<small>Ernston Rd & Washington Rd → Port Authority</small></button>
+    <button id="backBtn" class="secondary direction" type="button">Coming Back<small>Port Authority → Ernston Rd & Washington Rd</small></button>
+  </div>
+</section>
 
-    <label for="scheduleDay" class="label" style="display:block;margin:12px 0 6px">Schedule to view</label>
-    <select id="scheduleDay" onchange="changeScheduleDay(this.value)" style="width:100%;background:#0f172a;color:#f8fafc;border:1px solid #253044;border-radius:14px;padding:13px 14px;font-size:16px;font-weight:700;margin-bottom:10px">
+<section id="schedule" class="hidden">
+  <div class="toolbar">
+    <button id="homeBtn" class="secondary" type="button">← Back</button>
+    <button id="fullBtn" class="secondary" type="button">📅 View Full Schedule</button>
+  </div>
+  <div class="card">
+    <label for="daySelect">Schedule to view</label>
+    <select id="daySelect">
       <option value="auto">Today / Auto</option>
       <option value="weekday">Monday–Friday</option>
       <option value="sat">Saturday</option>
       <option value="sun">Sunday</option>
     </select>
-
-    <div id="activeNote" class="gate"></div>
-    <button id="toggleBtn" onclick="toggleFull()">📅 View Full Schedule</button>
-    <button class="alt" id="show139Btn" onclick="toggle139()">🚌 Show 139 Option</button>
-    <div id="list"></div>
+    <div class="titleRow"><div id="screenTitle" class="screenTitle"></div><div id="dayPill" class="dayPill"></div></div>
+    <div id="routeText" class="route"></div>
+    <button id="routeToggleBtn" class="alt" type="button">🚌 Show 139 Option</button>
+    <div id="tripList"></div>
   </div>
+  <div class="footer">Route 131 operates weekdays. Route 139 is available weekdays and has Saturday and Sunday service. Scheduled times are based on the uploaded NJ Transit PDFs.</div>
 </section>
 </div>
+
 <script>
-const stops={ernston:{name:'Ernston Rd & Washington Rd',lat:40.4587,lon:-74.3020},oldbridge:{name:'Old Bridge Park & Ride',lat:40.4119,lon:-74.3013},pabt:{name:'Port Authority Bus Terminal',lat:40.7569,lon:-73.9903}};
-const schedules={
-  going:{title:'🚍 Going',route:'Ernston Rd & Washington Rd → Port Authority',fallbackRoute:'Old Bridge Park & Ride → Port Authority',mainKey:'131_go',altKey:'139_go'},
-  back:{title:'🏠 Coming Back',route:'Port Authority → Ernston Rd & Washington Rd',fallbackRoute:'Port Authority → Old Bridge Park & Ride',mainKey:'131_back',altKey:'139_back'}
-};
 const routeData={
  '131_go':{routeNo:'131',note:'Bus 131 from Ernston Rd & Washington Rd to Port Authority.',trips:[['5:40 AM','6:26 AM'],['6:14 AM','7:00 AM'],['6:29 AM','7:15 AM'],['6:44 AM','7:30 AM'],['6:59 AM','7:45 AM'],['7:11 AM','7:57 AM'],['7:23 AM','8:09 AM'],['7:35 AM','8:21 AM'],['7:50 AM','8:36 AM'],['8:05 AM','8:51 AM'],['8:20 AM','9:06 AM'],['8:40 AM','9:26 AM']]},
  '131_back':{routeNo:'131',note:'Route 131 departs Port Authority from Gate 317.',trips:[['3:30 PM','4:21 PM'],['4:00 PM','4:53 PM'],['4:30 PM','5:23 PM'],['4:50 PM','5:43 PM'],['5:10 PM','6:03 PM'],['5:30 PM','6:22 PM'],['5:50 PM','6:41 PM'],['6:10 PM','7:00 PM'],['6:30 PM','7:20 PM'],['7:00 PM','7:50 PM'],['7:30 PM','8:20 PM'],['8:30 PM','9:20 PM']]},
@@ -50,65 +81,220 @@ const routeData={
  '139_back_sun':{routeNo:'139',note:'Sunday service: Port Authority to Old Bridge Park & Ride.',trips:[['4:00 AM','4:40 AM'],['5:30 AM','6:10 AM'],['6:30 AM','7:10 AM'],['7:30 AM','8:10 AM'],['8:15 AM','8:55 AM'],['9:00 AM','9:40 AM'],['9:30 AM','10:11 AM'],['10:00 AM','10:45 AM'],['10:30 AM','11:15 AM'],['11:00 AM','11:45 AM'],['11:30 AM','12:15 PM'],['12:00 PM','12:45 PM'],['12:30 PM','1:15 PM'],['1:00 PM','1:45 PM'],['1:30 PM','2:15 PM'],['2:00 PM','2:45 PM'],['2:30 PM','3:15 PM'],['3:00 PM','3:45 PM'],['3:20 PM','4:05 PM'],['3:30 PM','4:15 PM'],['3:50 PM','4:35 PM'],['4:00 PM','4:45 PM'],['4:20 PM','5:05 PM'],['4:30 PM','5:15 PM'],['4:50 PM','5:35 PM'],['5:00 PM','5:45 PM'],['5:20 PM','6:05 PM'],['5:30 PM','6:15 PM'],['5:50 PM','6:35 PM'],['6:00 PM','6:45 PM'],['6:20 PM','7:05 PM'],['6:30 PM','7:15 PM'],['6:50 PM','7:35 PM'],['7:00 PM','7:45 PM'],['7:30 PM','8:15 PM'],['7:50 PM','8:35 PM'],['8:00 PM','8:45 PM'],['8:30 PM','9:15 PM'],['9:00 PM','9:45 PM'],['9:30 PM','10:15 PM'],['10:00 PM','10:45 PM'],['10:30 PM','11:15 PM'],['11:00 PM','11:45 PM'],['11:45 PM','12:27 AM'],['12:30 AM','1:10 AM'],['1:45 AM','2:25 AM'],['2:30 AM','3:10 AM']]}
 
 };
-let currentDir='going', full=false, showAlt=false, order=['going','back'], autoOpened=false, selectedSchedule='auto';
-function renderHome(){const wrap=document.getElementById('directionButtons');wrap.innerHTML='';order.forEach((dir,idx)=>{const d=schedules[dir];const b=document.createElement('button');b.className=idx===0?'primary':'';b.onclick=()=>openDirection(dir);b.innerHTML=`${d.title}${idx===0?'<span class="pill">Nearest</span>':''}<span class="routeName">131: ${d.route}</span><span class="routeName">139 backup: ${d.fallbackRoute}</span>`;wrap.appendChild(b);});}
-function detectLocation(){const status=document.getElementById('locationStatus');if(!navigator.geolocation){status.textContent='Location not supported. Use Swap if needed.';renderHome();return;}status.textContent='Checking your location…';navigator.geolocation.getCurrentPosition(pos=>{const here={lat:pos.coords.latitude,lon:pos.coords.longitude};const dNJ=Math.min(distanceMiles(here,stops.ernston),distanceMiles(here,stops.oldbridge));const dNY=distanceMiles(here,stops.pabt);if(dNJ<=dNY){order=['going','back'];status.textContent=`Nearest commute side: New Jersey (${dNJ.toFixed(1)} mi). Showing Going first.`;}else{order=['back','going'];status.textContent=`Nearest commute side: Port Authority (${dNY.toFixed(1)} mi). Showing Coming Back first.`;}localStorage.setItem('busOrder',JSON.stringify(order));renderHome();if(!autoOpened){autoOpened=true;openDirection(order[0]);}},()=>{status.textContent='Location permission not available. Choose a direction below.';renderHome();},{enableHighAccuracy:true,timeout:8000,maximumAge:60000});}
-function swapOrder(){order=[...order].reverse();localStorage.setItem('busOrder',JSON.stringify(order));document.getElementById('locationStatus').textContent='Manual order saved.';renderHome();}
-function distanceMiles(a,b){const R=3958.8,toRad=x=>x*Math.PI/180;const dLat=toRad(b.lat-a.lat),dLon=toRad(b.lon-a.lon),lat1=toRad(a.lat),lat2=toRad(b.lat);const h=Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
-function parseTimeOnDate(t,baseDate){const [hm,ap]=t.split(' ');let [h,m]=hm.split(':').map(Number);if(ap==='PM'&&h!==12)h+=12;if(ap==='AM'&&h===12)h=0;const d=new Date(baseDate);d.setHours(h,m,0,0);return d;}
-function tripObjects(key){const base=new Date();base.setHours(0,0,0,0);let previous=null;const source=routeData[key].trips;return source.map((x,index)=>{let depDate=parseTimeOnDate(x[0],base);if(previous&&depDate<=previous)depDate.setDate(depDate.getDate()+1);previous=depDate;return{dep:x[0],arr:x[1],date:depDate,min:Math.round((depDate-new Date())/60000),isLast:index===source.length-1};});}
-function dayType(){
-  if(selectedSchedule!=='auto')return selectedSchedule;
+
+const directions={
+  going:{title:"Going",main:"131_go",alt:"139_go",sat:"139_go_sat",sun:"139_go_sun",mainRoute:"Ernston Rd & Washington Rd → Port Authority",altRoute:"Old Bridge Park & Ride → Port Authority"},
+  back:{title:"Coming Back",main:"131_back",alt:"139_back",sat:"139_back_sat",sun:"139_back_sun",mainRoute:"Port Authority → Ernston Rd & Washington Rd",altRoute:"Port Authority → Old Bridge Park & Ride"}
+};
+
+let currentDirection="going";
+let selectedDay="auto";
+let fullView=false;
+let show139=false;
+
+const $=id=>document.getElementById(id);
+
+function actualDayType(){
   const d=new Date().getDay();
-  return d===6?'sat':d===0?'sun':'weekday';
+  return d===6?"sat":d===0?"sun":"weekday";
 }
-function isWeekend(){return dayType()!=='weekday';}
-function changeScheduleDay(value){
-  selectedSchedule=value;
-  full=true;
-  document.getElementById('toggleBtn').textContent='⏱ Show Next 2 Hours';
+
+function selectedDayType(){
+  return selectedDay==="auto"?actualDayType():selectedDay;
+}
+
+function nextDateFor(type){
+  const now=new Date();
+  const d=new Date(now);
+  d.setHours(0,0,0,0);
+  if(type==="auto") return d;
+  const target=type==="weekday"?1:type==="sat"?6:0;
+  let delta=(target-d.getDay()+7)%7;
+  if(type==="weekday" && d.getDay()>=1 && d.getDay()<=5) delta=0;
+  if((type==="sat"&&d.getDay()===6)||(type==="sun"&&d.getDay()===0)) delta=0;
+  d.setDate(d.getDate()+delta);
+  return d;
+}
+
+function parseTime(str,date){
+  const parts=str.split(" ");
+  const hm=parts[0].split(":").map(Number);
+  let h=hm[0],m=hm[1];
+  const ap=parts[1];
+  if(ap==="PM"&&h!==12)h+=12;
+  if(ap==="AM"&&h===12)h=0;
+  const out=new Date(date);
+  out.setHours(h,m,0,0);
+  return out;
+}
+
+function tripsFor(key,serviceDate){
+  const source=routeData[key].trips;
+  let previous=null;
+  return source.map((pair,index)=>{
+    let depDate=parseTime(pair[0],serviceDate);
+    if(previous && depDate<=previous) depDate.setDate(depDate.getDate()+1);
+    previous=depDate;
+    return {dep:pair[0],arr:pair[1],depDate,isLast:index===source.length-1};
+  });
+}
+
+function waitText(ms){
+  const mins=Math.max(0,Math.ceil(ms/60000));
+  const days=Math.floor(mins/1440);
+  const left=mins%1440;
+  const hrs=Math.floor(left/60);
+  const rem=left%60;
+  const parts=[];
+  if(days)parts.push(days+" day"+(days===1?"":"s"));
+  if(hrs)parts.push(hrs+" hr");
+  if(rem||parts.length===0)parts.push(rem+" min");
+  return parts.join(" ");
+}
+
+function countdownBadge(ms){
+  if(ms<=-60000) return '<span>Departed</span>';
+  if(ms<60000) return '<span class="badge red">Leaving now</span>';
+  const mins=Math.ceil(ms/60000);
+  const cls=mins<5?"red":mins<15?"orange":"green";
+  return '<span class="badge '+cls+'">Leaves in '+waitText(ms)+'</span>';
+}
+
+function openDirection(dir){
+  currentDirection=dir;
+  selectedDay="auto";
+  fullView=false;
+  show139=false;
+  $("daySelect").value="auto";
+  $("home").classList.add("hidden");
+  $("schedule").classList.remove("hidden");
   render();
 }
-function formatWait(min){const total=Math.max(0,Math.round(min));if(total<60)return total+' min';const hr=Math.floor(total/60),mins=total%60;return mins===0?hr+' hr':hr+' hr '+mins+' min';}
-function badge(min){const text='Leaves in '+formatWait(min);if(min<5)return['red',text];if(min<15)return['orange',text];return['green',text];}
-function getTrips(key,onlyNext=true){let trips=tripObjects(key);return onlyNext?trips.filter(x=>x.min>=0&&x.min<=120):trips;}
-function renderTrips(title,key,notice){const box=document.createElement('div');box.innerHTML=`<div class="subhead">${title}</div>`;if(notice)box.innerHTML+=`<div class="warnBox">${notice}</div>`;const d=routeData[key];box.innerHTML+=`<div class="gate">${d.note}</div>`;let trips=getTrips(key,!full);if(trips.length===0){box.innerHTML+='<div class="empty">No buses in this view.</div>';return box;}trips.forEach((x,i)=>{const r=document.createElement('div');r.className='row';let b='';if(!full&&i===0){const bb=badge(x.min);b=`<span class="badge ${bb[0]}">${bb[1]}</span>`;}const last=x.isLast?'<span class="badge lastBus">Last Bus</span>':'';r.innerHTML=`<div>${b}${last}<div class="time">${x.dep}</div><div class="label">Depart</div></div><div class="arrow">→</div><div><div class="time">${x.arr}</div><div class="label">Arrive</div></div>`;box.appendChild(r);});return box;}
+
+function goHome(){
+  $("schedule").classList.add("hidden");
+  $("home").classList.remove("hidden");
+}
+
+function toggleFull(){
+  fullView=!fullView;
+  render();
+}
+
+function toggleRoute(){
+  show139=!show139;
+  render();
+}
+
+function renderTrips(title,key,notice,serviceDate){
+  const now=new Date();
+  const all=tripsFor(key,serviceDate);
+  const visible=fullView?all:all.filter(t=>{
+    const diff=t.depDate-now;
+    return diff>=0&&diff<=2*60*60*1000;
+  });
+  let content='<div class="sectionTitle">'+title+'</div>';
+  if(notice) content+='<div class="warn">'+notice+'</div>';
+  content+='<div class="note">'+routeData[key].note+'</div>';
+  if(!visible.length) return content+'<div class="empty">No buses in this view.</div>';
+  content+=visible.map((t,i)=>{
+    const diff=t.depDate-now;
+    const last=t.isLast?'<span class="badge last">Last Bus</span>':'';
+    return '<div class="trip '+(!fullView&&i===0?"next":"")+'">'+
+      '<div><div class="time">'+t.dep+'</div><div class="route">Depart</div></div>'+
+      '<div class="arrow">→</div>'+
+      '<div class="right"><div class="time">'+t.arr+'</div><div class="route">Arrive</div></div>'+
+      '<div class="meta">'+last+countdownBadge(diff)+'</div></div>';
+  }).join("");
+  return content;
+}
+
 function render(){
- const d=schedules[currentDir],dt=dayType();
- const weekend=dt!=='weekday';
- const weekendKey=weekend?`${d.altKey}_${dt}`:d.altKey;
- document.getElementById('dirTitle').textContent=d.title;
- document.getElementById('dirRoute').textContent=weekend?`139: ${d.fallbackRoute}`:(showAlt?`139: ${d.fallbackRoute}`:`131: ${d.route}`);
- document.getElementById('toggleBtn').textContent=full?'⏱ Show Next 2 Hours':'📅 View Full Schedule';
- const altBtn=document.getElementById('show139Btn');
- altBtn.style.display=weekend?'none':'block';
- altBtn.textContent=showAlt?'🚌 Show 131':'🚌 Show 139 Option';
- const list=document.getElementById('list');list.innerHTML='';
- if(weekend){
-   list.appendChild(renderTrips(`Route 139 ${dt==='sat'?'Saturday':'Sunday'} Service`,weekendKey,'Route 131 does not operate on weekends. Showing Route 139 weekend service.'));
-   return;
- }
- const mainNext=getTrips(d.mainKey,true);
- if(showAlt){list.appendChild(renderTrips('Route 139 Option',d.altKey,''));return;}
- list.appendChild(renderTrips('Route 131',d.mainKey,''));
- if(!full&&mainNext.length===0){
-   const altNext=getTrips(d.altKey,true);
-   if(altNext.length>0)list.appendChild(renderTrips('Route 139 Backup',d.altKey,'No 131 buses in the next 2 hours. Showing 139 backup.'));
-   else list.innerHTML+='<div class="empty">No 131 or 139 buses found in the next 2 hours.</div>';
- }
+  const dir=directions[currentDirection];
+  const type=selectedDayType();
+  const serviceDate=nextDateFor(selectedDay);
+  const dateText=serviceDate.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+  $("screenTitle").textContent=dir.title;
+  $("dayPill").textContent=(type==="weekday"?"Mon–Fri":type==="sat"?"Saturday":"Sunday")+" · "+dateText;
+  $("fullBtn").textContent=fullView?"⏱ Show Next 2 Hours":"📅 View Full Schedule";
+
+  if(type==="sat"||type==="sun"){
+    $("routeToggleBtn").classList.add("hidden");
+    $("routeText").textContent="Route 139: "+dir.altRoute;
+    const key=type==="sat"?dir.sat:dir.sun;
+    $("tripList").innerHTML=renderTrips("Route 139 "+(type==="sat"?"Saturday":"Sunday")+" Service",key,"Route 131 does not operate on weekends.",serviceDate);
+    return;
+  }
+
+  $("routeToggleBtn").classList.remove("hidden");
+  $("routeToggleBtn").textContent=show139?"🚌 Show 131":"🚌 Show 139 Option";
+  $("routeText").textContent=(show139?"Route 139: "+dir.altRoute:"Route 131: "+dir.mainRoute);
+  if(show139){
+    $("tripList").innerHTML=renderTrips("Route 139",dir.alt,"",serviceDate);
+    return;
+  }
+
+  const mainTrips=tripsFor(dir.main,serviceDate);
+  const now=new Date();
+  const mainNext=mainTrips.filter(t=>t.depDate-now>=0&&t.depDate-now<=2*60*60*1000);
+  let output=renderTrips("Route 131",dir.main,"",serviceDate);
+  if(!fullView&&mainNext.length===0){
+    const altTrips=tripsFor(dir.alt,serviceDate).filter(t=>t.depDate-now>=0&&t.depDate-now<=2*60*60*1000);
+    if(altTrips.length){
+      output+=renderTrips("Route 139 Backup",dir.alt,"No Route 131 buses in the next 2 hours. Showing Route 139.",serviceDate);
+    }
+  }
+  $("tripList").innerHTML=output;
 }
-function openDirection(dir){currentDir=dir;full=false;showAlt=false;selectedSchedule='auto';const selector=document.getElementById('scheduleDay');if(selector)selector.value='auto';document.getElementById('home').classList.add('hidden');document.getElementById('scheduleScreen').classList.remove('hidden');render();}
-function showHome(){document.getElementById('scheduleScreen').classList.add('hidden');document.getElementById('home').classList.remove('hidden');renderHome();}
-function toggleFull(){full=!full;render();}
-function toggle139(){showAlt=!showAlt;full=false;render();}
-function tick(){
-  document.getElementById('nowText').textContent=new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
-  const dt=dayType();
-  const prefix=selectedSchedule==='auto'?'Today · ':'';
-  document.getElementById('dayLabel').textContent=prefix+(dt==='sat'?'Saturday schedule':dt==='sun'?'Sunday schedule':'Monday–Friday schedule');
-  if(!document.getElementById('scheduleScreen').classList.contains('hidden'))render();
+
+function useLocation(){
+  const status=$("locationStatus");
+  const btn=$("locationBtn");
+  if(!window.isSecureContext){
+    status.textContent="Location requires the HTTPS GitHub Pages link.";
+    return;
+  }
+  if(!navigator.geolocation){
+    status.textContent="Location is not supported. Choose a direction below.";
+    return;
+  }
+  btn.disabled=true;
+  btn.textContent="Finding location…";
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const lat=pos.coords.latitude,lon=pos.coords.longitude;
+    const rad=x=>x*Math.PI/180;
+    const dist=(a,b,c,d)=>{
+      const R=3958.8,dl=rad(c-a),dn=rad(d-b);
+      const q=Math.sin(dl/2)**2+Math.cos(rad(a))*Math.cos(rad(c))*Math.sin(dn/2)**2;
+      return 2*R*Math.asin(Math.sqrt(q));
+    };
+    const airportNJ=dist(lat,lon,40.4383,-74.3037);
+    const pabt=dist(lat,lon,40.7569,-73.9903);
+    const dir=airportNJ<=pabt?"going":"back";
+    status.textContent="Nearest commute side detected. Opening "+(dir==="going"?"Going":"Coming Back")+".";
+    btn.disabled=false;btn.textContent="📍 Use My Location";
+    openDirection(dir);
+  },()=>{
+    status.textContent="Location could not be detected. Choose a direction below.";
+    btn.disabled=false;btn.textContent="📍 Try My Location Again";
+  },{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
 }
-function init(){try{const saved=JSON.parse(localStorage.getItem('busOrder'));if(Array.isArray(saved)&&saved.length===2)order=saved;}catch(e){}renderHome();detectLocation();tick();}init();setInterval(tick,60000);
+
+$("goingBtn").addEventListener("click",()=>openDirection("going"));
+$("backBtn").addEventListener("click",()=>openDirection("back"));
+$("homeBtn").addEventListener("click",goHome);
+$("fullBtn").addEventListener("click",toggleFull);
+$("routeToggleBtn").addEventListener("click",toggleRoute);
+$("locationBtn").addEventListener("click",useLocation);
+$("daySelect").addEventListener("change",e=>{
+  selectedDay=e.target.value;
+  fullView=selectedDay!=="auto";
+  render();
+});
+
+setInterval(()=>{
+  if(!$("schedule").classList.contains("hidden")) render();
+},60000);
 </script>
 </body>
 </html>
