@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#101828" />
+  <title>Maniacs Football Pool</title>
+  <style>
+    :root{
+      --bg:#f3f5f8; --card:#fff; --ink:#101828; --muted:#667085;
+      --brand:#147a42; --brand2:#0f5f33; --line:#e4e7ec;
+      --danger:#b42318; --warn:#b54708; --gold:#f4b400;
+      --shadow:0 10px 25px rgba(16,24,40,.08);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+    body{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+    header{
+      background:linear-gradient(135deg,#101828,#1d2939);
+      color:#fff;padding:calc(18px + env(safe-area-inset-top)) 18px 18px;
+      position:sticky;top:0;z-index:20;box-shadow:0 4px 18px rgba(0,0,0,.18)
+    }
+    .header-row{max-width:980px;margin:auto;display:flex;gap:12px;align-items:center;justify-content:space-between}
+    .brand h1{font-size:21px;margin:0}.brand p{font-size:12px;margin:4px 0 0;color:#d0d5dd}
+    .pill{font-size:11px;padding:7px 10px;border-radius:999px;background:#ecfdf3;color:#067647;font-weight:800}
+    main{max-width:980px;margin:18px auto;padding:0 14px}
+    .notice{background:#fffaeb;border:1px solid #fedf89;color:#93370d;padding:11px 13px;border-radius:12px;font-size:12px;margin-bottom:14px}
+    .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+    .tab{border:1px solid var(--line);background:#fff;color:var(--muted);font-weight:800;padding:10px 6px;border-radius:11px;font-size:12px}
+    .tab.active{background:var(--brand);border-color:var(--brand);color:#fff}
+    .panel{display:none}.panel.active{display:block}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:13px;box-shadow:var(--shadow)}
+    .card h2{font-size:17px;margin:0 0 12px}.card h3{font-size:14px;margin:0 0 8px}
+    label{display:block;font-size:12px;font-weight:800;margin:11px 0 6px}
+    input,select,button,textarea{font:inherit}
+    input,select,textarea{
+      width:100%;border:1px solid #d0d5dd;border-radius:10px;padding:11px;background:#fff;color:var(--ink)
+    }
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+    .btn{border:0;border-radius:10px;padding:11px 13px;font-weight:800;cursor:pointer}
+    .btn.primary{background:var(--brand);color:#fff}.btn.primary:active{background:var(--brand2)}
+    .btn.secondary{background:#eef2f6;color:#344054}
+    .btn.danger{background:#fee4e2;color:var(--danger)}
+    .btn.full{width:100%;margin-top:12px}
+    .match-title{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+    .teams{font-weight:900;font-size:17px}.meta{font-size:11px;color:var(--muted);margin-top:4px}
+    .status{font-size:10px;font-weight:900;padding:5px 8px;border-radius:999px;white-space:nowrap}
+    .status.open{background:#ecfdf3;color:#067647}.status.locked{background:#fef0c7;color:#93370d}.status.final{background:#eaecf0;color:#344054}
+    .pick-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:13px}
+    .pick{border:1px solid #d0d5dd;background:#fff;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:800}
+    .pick.selected{background:#ecfdf3;border-color:#12b76a;color:#067647}
+    .small{font-size:11px;color:var(--muted)} .empty{text-align:center;color:var(--muted);padding:20px 8px}
+    .leader{display:grid;grid-template-columns:36px 1fr auto;gap:9px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
+    .leader:last-child{border-bottom:0}.rank{width:30px;height:30px;display:grid;place-items:center;border-radius:50%;background:#f2f4f7;font-weight:900}
+    .score{font-weight:900;color:var(--brand)}
+    .bet-item{padding:10px 0;border-bottom:1px solid var(--line)}.bet-item:last-child{border-bottom:0}
+    .admin-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+    .hidden{display:none!important}
+    .toast{position:fixed;left:50%;bottom:25px;transform:translateX(-50%);background:#101828;color:#fff;padding:10px 14px;border-radius:10px;font-size:12px;z-index:99;opacity:0;pointer-events:none;transition:.25s}
+    .toast.show{opacity:1}
+    footer{text-align:center;color:var(--muted);font-size:11px;margin:24px 0}
+    @media(max-width:620px){
+      .grid2,.grid3{grid-template-columns:1fr}
+      .tabs{grid-template-columns:repeat(4,1fr)}
+      .tab{font-size:11px;padding:10px 2px}
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="header-row">
+    <div class="brand">
+      <h1>⚽ Maniacs Football Pool</h1>
+      <p>Friendly predictions • Bragging rights • No real money</p>
+    </div>
+    <span class="pill">POINTS ONLY</span>
+  </div>
+</header>
+
+<main>
+  <div class="notice"><b>Important:</b> This app is designed as a no-cash social prediction pool. It does not process payments, odds, deposits, or withdrawals.</div>
+  <div class="card" style="padding:10px 13px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <div><b>Shared database</b><div id="syncDetail" class="small">Connecting to Supabase…</div></div>
+      <span id="syncStatus" class="status locked">CONNECTING</span>
+    </div>
+  </div>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="picks">Picks</button>
+    <button class="tab" data-tab="mine">My Picks</button>
+    <button class="tab" data-tab="board">Leaderboard</button>
+    <button class="tab" data-tab="admin">Admin</button>
+  </nav>
+
+  <section id="picks" class="panel active">
+    <div class="card">
+      <h2>Participant</h2>
+      <div class="grid2">
+        <div>
+          <label>Your name</label>
+          <input id="playerName" placeholder="Example: Roni" autocomplete="name">
+        </div>
+        <div>
+          <label>Submitting for</label>
+          <select id="submitMode">
+            <option value="self">Myself</option>
+            <option value="proxy">Another member (proxy)</option>
+          </select>
+        </div>
+      </div>
+      <div id="proxyWrap" class="hidden">
+        <label>Member name</label>
+        <input id="proxyName" placeholder="Name of member">
+      </div>
+    </div>
+    <div id="matchList"></div>
+  </section>
+
+  <section id="mine" class="panel">
+    <div class="card">
+      <h2>My submitted picks</h2>
+      <div id="myPicks"></div>
+    </div>
+  </section>
+
+  <section id="board" class="panel">
+    <div class="card">
+      <h2>Leaderboard</h2>
+      <div class="small">Correct result = 3 points. Exact score = 2 bonus points.</div>
+      <div id="leaderboard"></div>
+    </div>
+  </section>
+
+  <section id="admin" class="panel">
+    <div class="card">
+      <h2>Admin access</h2>
+      <label>Admin PIN</label>
+      <input id="adminPin" inputmode="numeric" type="password" placeholder="Default: 2016">
+      <button class="btn primary full" id="unlockAdmin">Unlock admin</button>
+    </div>
+
+    <div id="adminArea" class="hidden">
+      <div class="card">
+        <h2>Add match</h2>
+        <div class="grid2">
+          <div><label>Team A</label><input id="teamA" placeholder="England"></div>
+          <div><label>Team B</label><input id="teamB" placeholder="Norway"></div>
+        </div>
+        <div class="grid2">
+          <div><label>Kickoff</label><input id="kickoff" type="datetime-local"></div>
+          <div><label>Competition</label><input id="competition" value="Football Match"></div>
+        </div>
+        <button class="btn primary full" id="addMatch">Add match</button>
+      </div>
+      <div class="card">
+        <h2>Manage matches</h2>
+        <div id="adminMatches"></div>
+      </div>
+      <div class="card">
+        <h2>Data</h2>
+        <div class="admin-actions">
+          <button class="btn secondary" id="exportData">Export backup</button>
+          <button class="btn secondary" id="importData">Import backup</button>
+          <button class="btn danger" id="resetData">Reset app</button>
+          <input id="importFile" type="file" accept=".json" class="hidden">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>Maniacs Football Pool • Data is stored only on this device/browser.</footer>
+</main>
+<div id="toast" class="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(() => {
+  const KEY = "maniacsFootballPoolV1";
+  const PIN = "2016";
+
+  // Paste values from Supabase: Project Settings → API.
+  // Use the Project URL and the publishable/anon key. Never use the service_role key here.
+  const SUPABASE_URL = "https://pfwkauorjzzcnuvwujxj.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_1gUsJnbBzdphciR-WcYy7w_1Vn-n-X1";
+  const SUPABASE_ROW_ID = "main";
+
+  const configured =
+    SUPABASE_URL.startsWith("https://") &&
+    !SUPABASE_URL.includes("PASTE_") &&
+    SUPABASE_ANON_KEY.length > 30 &&
+    !SUPABASE_ANON_KEY.includes("PASTE_");
+
+  const db = configured
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+  let state = localLoad();
+  let saveTimer = null;
+  let realtimeChannel = null;
+
+  function seed() {
+    const now = new Date();
+    const later = new Date(now.getTime() + 60*60*1000);
+    return {
+      matches: [{
+        id: cryptoId(),
+        teamA: "Team A",
+        teamB: "Team B",
+        competition: "Tonight's Match",
+        kickoff: toLocalInput(later),
+        locked: false,
+        final: false,
+        scoreA: null,
+        scoreB: null
+      }],
+      picks: []
+    };
+  }
+  function localLoad(){
+    try { return JSON.parse(localStorage.getItem(KEY)) || seed(); }
+    catch { return seed(); }
+  }
+
+  function setSync(kind, detail){
+    const badge = document.getElementById("syncStatus");
+    const text = document.getElementById("syncDetail");
+    if(!badge || !text) return;
+    badge.className = "status " + (kind === "online" ? "open" : kind === "error" ? "final" : "locked");
+    badge.textContent = kind === "online" ? "ONLINE" : kind === "error" ? "LOCAL ONLY" : "SYNCING";
+    text.textContent = detail;
+  }
+
+  async function cloudLoad(){
+    if(!db){
+      setSync("error", "Add your Supabase URL and anon key inside this HTML file.");
+      renderAll();
+      return;
+    }
+    setSync("syncing", "Loading shared Maniacs pool…");
+    const { data, error } = await db
+      .from("maniacs_pool_state")
+      .select("data")
+      .eq("id", SUPABASE_ROW_ID)
+      .maybeSingle();
+
+    if(error){
+      console.error(error);
+      setSync("error", "Supabase load failed. Using this device’s saved copy.");
+      renderAll();
+      return;
+    }
+
+    if(data?.data){
+      state = data.data;
+      localStorage.setItem(KEY, JSON.stringify(state));
+    } else {
+      await cloudSave(true);
+    }
+    renderAll();
+    setSync("online", "Shared picks are synchronized across members’ devices.");
+    subscribeRealtime();
+  }
+
+  async function cloudSave(force = false){
+    localStorage.setItem(KEY, JSON.stringify(state));
+    renderAll();
+    if(!db){
+      setSync("error", "Supabase is not configured; saved only on this device.");
+      return;
+    }
+    setSync("syncing", "Saving shared data…");
+    const { error } = await db
+      .from("maniacs_pool_state")
+      .upsert({
+        id: SUPABASE_ROW_ID,
+        data: state,
+        updated_at: new Date().toISOString()
+      }, { onConflict: "id" });
+
+    if(error){
+      console.error(error);
+      setSync("error", "Could not save to Supabase; local backup was retained.");
+      if(force) throw error;
+      return;
+    }
+    setSync("online", "All changes saved to Supabase.");
+  }
+
+  function save(){
+    localStorage.setItem(KEY, JSON.stringify(state));
+    renderAll();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => cloudSave(), 150);
+  }
+
+  function subscribeRealtime(){
+    if(!db || realtimeChannel) return;
+    realtimeChannel = db
+      .channel("maniacs-football-pool")
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "maniacs_pool_state",
+        filter: `id=eq.${SUPABASE_ROW_ID}`
+      }, payload => {
+        const remote = payload.new?.data;
+        if(remote){
+          state = remote;
+          localStorage.setItem(KEY, JSON.stringify(state));
+          renderAll();
+          setSync("online", "Updated from another member’s device.");
+        }
+      })
+      .subscribe();
+  }
+  function cryptoId(){ return (crypto.randomUUID ? crypto.randomUUID() : Date.now()+"-"+Math.random()); }
+  function esc(v){ return String(v ?? "").replace(/[&<>"']/g, s=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[s])); }
+  function toLocalInput(d){
+    const p=n=>String(n).padStart(2,"0");
+    return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+  function fmtDate(v){
+    if(!v) return "Time not set";
+    const d=new Date(v);
+    return d.toLocaleString([], {weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
+  }
+  function isLocked(m){ return m.locked || m.final || (m.kickoff && new Date(m.kickoff) <= new Date()); }
+  function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1800); }
+  function activePlayer(){
+    const self = document.getElementById("playerName").value.trim();
+    const proxy = document.getElementById("proxyName").value.trim();
+    return document.getElementById("submitMode").value === "proxy" ? proxy : self;
+  }
+
+  document.querySelectorAll(".tab").forEach(btn => btn.onclick = () => {
+    document.querySelectorAll(".tab,.panel").forEach(x=>x.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(btn.dataset.tab).classList.add("active");
+    renderAll();
+  });
+  document.getElementById("submitMode").onchange = e => {
+    document.getElementById("proxyWrap").classList.toggle("hidden", e.target.value !== "proxy");
+  };
+  document.getElementById("playerName").oninput = renderMyPicks;
+  document.getElementById("proxyName").oninput = renderMyPicks;
+
+  function renderMatches(){
+    const el=document.getElementById("matchList");
+    if(!state.matches.length){el.innerHTML='<div class="card empty">No matches added yet.</div>';return;}
+    el.innerHTML=state.matches
+      .sort((a,b)=>new Date(a.kickoff)-new Date(b.kickoff))
+      .map(m=>{
+        const locked=isLocked(m);
+        const status=m.final?"final":locked?"locked":"open";
+        const statusText=m.final?"FINAL":locked?"LOCKED":"OPEN";
+        return `<div class="card">
+          <div class="match-title">
+            <div><div class="teams">${esc(m.teamA)} vs ${esc(m.teamB)}</div>
+            <div class="meta">${esc(m.competition)} • ${fmtDate(m.kickoff)}</div></div>
+            <span class="status ${status}">${statusText}</span>
+          </div>
+          ${m.final ? `<h3 style="margin-top:13px">Final score: ${m.scoreA} – ${m.scoreB}</h3>` :
+          `<div class="pick-row">
+            <button class="pick" ${locked?"disabled":""} data-pick="${m.id}|A">${esc(m.teamA)} wins</button>
+            <button class="pick" ${locked?"disabled":""} data-pick="${m.id}|D">Draw</button>
+            <button class="pick" ${locked?"disabled":""} data-pick="${m.id}|B">${esc(m.teamB)} wins</button>
+          </div>
+          <div class="grid2">
+            <div><label>Predicted ${esc(m.teamA)} score</label><input id="sa-${m.id}" type="number" min="0" max="20" value="0" ${locked?"disabled":""}></div>
+            <div><label>Predicted ${esc(m.teamB)} score</label><input id="sb-${m.id}" type="number" min="0" max="20" value="0" ${locked?"disabled":""}></div>
+          </div>
+          <input type="hidden" id="choice-${m.id}">
+          <button class="btn primary full" data-submit="${m.id}" ${locked?"disabled":""}>Submit prediction</button>`}
+        </div>`;
+      }).join("");
+
+    document.querySelectorAll("[data-pick]").forEach(b=>b.onclick=()=>{
+      const [id,choice]=b.dataset.pick.split("|");
+      document.querySelectorAll(`[data-pick^="${id}|"]`).forEach(x=>x.classList.remove("selected"));
+      b.classList.add("selected");
+      document.getElementById("choice-"+id).value=choice;
+    });
+    document.querySelectorAll("[data-submit]").forEach(b=>b.onclick=()=>submitPick(b.dataset.submit));
+  }
+
+  function submitPick(matchId){
+    const player=activePlayer();
+    if(!player){toast("Enter the member name first.");return;}
+    const m=state.matches.find(x=>x.id===matchId);
+    if(!m || isLocked(m)){toast("This match is locked.");return;}
+    const a=Number(document.getElementById("sa-"+matchId).value);
+    const b=Number(document.getElementById("sb-"+matchId).value);
+    let choice=document.getElementById("choice-"+matchId).value;
+    if(!choice) choice=a>b?"A":a<b?"B":"D";
+    const submittedBy=document.getElementById("playerName").value.trim() || player;
+    const existing=state.picks.find(p=>p.matchId===matchId && p.player.toLowerCase()===player.toLowerCase());
+    const data={id:existing?.id||cryptoId(),matchId,player,submittedBy,choice,scoreA:a,scoreB:b,createdAt:new Date().toISOString()};
+    if(existing) Object.assign(existing,data); else state.picks.push(data);
+    save();toast(existing?"Prediction updated.":"Prediction submitted.");
+  }
+
+  function resultChoice(a,b){return a>b?"A":a<b?"B":"D";}
+  function pointsFor(p,m){
+    if(!m.final) return 0;
+    let pts=p.choice===resultChoice(m.scoreA,m.scoreB)?3:0;
+    if(p.scoreA===m.scoreA && p.scoreB===m.scoreB) pts+=2;
+    return pts;
+  }
+  function renderMyPicks(){
+    const el=document.getElementById("myPicks");
+    const player=activePlayer() || document.getElementById("playerName").value.trim();
+    if(!player){el.innerHTML='<div class="empty">Enter your name on the Picks tab.</div>';return;}
+    const list=state.picks.filter(p=>p.player.toLowerCase()===player.toLowerCase());
+    if(!list.length){el.innerHTML='<div class="empty">No picks submitted for this member.</div>';return;}
+    el.innerHTML=list.map(p=>{
+      const m=state.matches.find(x=>x.id===p.matchId);
+      if(!m)return "";
+      return `<div class="bet-item"><b>${esc(m.teamA)} ${p.scoreA} – ${p.scoreB} ${esc(m.teamB)}</b>
+      <div class="small">${fmtDate(m.kickoff)}${p.submittedBy!==p.player?` • Proxy by ${esc(p.submittedBy)}`:""}${m.final?` • ${pointsFor(p,m)} pts`:""}</div></div>`;
+    }).join("");
+  }
+  function renderLeaderboard(){
+    const totals={};
+    state.picks.forEach(p=>{
+      if(!totals[p.player]) totals[p.player]={name:p.player,pts:0,exact:0};
+      const m=state.matches.find(x=>x.id===p.matchId);
+      if(m?.final){
+        const pts=pointsFor(p,m); totals[p.player].pts+=pts;
+        if(pts===5) totals[p.player].exact++;
+      }
+    });
+    const list=Object.values(totals).sort((a,b)=>b.pts-a.pts || b.exact-a.exact || a.name.localeCompare(b.name));
+    const el=document.getElementById("leaderboard");
+    if(!list.length){el.innerHTML='<div class="empty">Leaderboard will appear after picks are submitted.</div>';return;}
+    el.innerHTML=list.map((x,i)=>`<div class="leader"><div class="rank">${i+1}</div><div><b>${esc(x.name)}</b><div class="small">${x.exact} exact score${x.exact===1?"":"s"}</div></div><div class="score">${x.pts} pts</div></div>`).join("");
+  }
+
+  document.getElementById("unlockAdmin").onclick=()=>{
+    if(document.getElementById("adminPin").value===PIN){document.getElementById("adminArea").classList.remove("hidden");toast("Admin unlocked.");}
+    else toast("Incorrect PIN.");
+  };
+  document.getElementById("addMatch").onclick=()=>{
+    const a=document.getElementById("teamA").value.trim(), b=document.getElementById("teamB").value.trim();
+    if(!a||!b){toast("Enter both teams.");return;}
+    state.matches.push({id:cryptoId(),teamA:a,teamB:b,competition:document.getElementById("competition").value.trim()||"Football Match",kickoff:document.getElementById("kickoff").value,locked:false,final:false,scoreA:null,scoreB:null});
+    document.getElementById("teamA").value="";document.getElementById("teamB").value="";
+    save();toast("Match added.");
+  };
+  function renderAdmin(){
+    const el=document.getElementById("adminMatches");
+    if(!state.matches.length){el.innerHTML='<div class="empty">No matches.</div>';return;}
+    el.innerHTML=state.matches.map(m=>`<div class="bet-item">
+      <b>${esc(m.teamA)} vs ${esc(m.teamB)}</b><div class="small">${fmtDate(m.kickoff)}</div>
+      <div class="grid2">
+        <div><label>Final ${esc(m.teamA)}</label><input id="fa-${m.id}" type="number" min="0" value="${m.scoreA ?? 0}"></div>
+        <div><label>Final ${esc(m.teamB)}</label><input id="fb-${m.id}" type="number" min="0" value="${m.scoreB ?? 0}"></div>
+      </div>
+      <div class="admin-actions">
+        <button class="btn secondary" data-lock="${m.id}">${m.locked?"Unlock":"Lock"}</button>
+        <button class="btn primary" data-final="${m.id}">Save final score</button>
+        <button class="btn danger" data-delete="${m.id}">Delete</button>
+      </div></div>`).join("");
+    document.querySelectorAll("[data-lock]").forEach(b=>b.onclick=()=>{
+      const m=state.matches.find(x=>x.id===b.dataset.lock);m.locked=!m.locked;save();
+    });
+    document.querySelectorAll("[data-final]").forEach(b=>b.onclick=()=>{
+      const id=b.dataset.final,m=state.matches.find(x=>x.id===id);
+      m.scoreA=Number(document.getElementById("fa-"+id).value);
+      m.scoreB=Number(document.getElementById("fb-"+id).value);
+      m.final=true;m.locked=true;save();toast("Result saved and points calculated.");
+    });
+    document.querySelectorAll("[data-delete]").forEach(b=>b.onclick=()=>{
+      if(confirm("Delete this match and all its picks?")){
+        state.matches=state.matches.filter(x=>x.id!==b.dataset.delete);
+        state.picks=state.picks.filter(x=>x.matchId!==b.dataset.delete);save();
+      }
+    });
+  }
+
+  document.getElementById("exportData").onclick=()=>{
+    const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="maniacs-football-pool-backup.json";a.click();URL.revokeObjectURL(a.href);
+  };
+  document.getElementById("importData").onclick=()=>document.getElementById("importFile").click();
+  document.getElementById("importFile").onchange=e=>{
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();r.onload=()=>{try{state=JSON.parse(r.result);save();toast("Backup imported.");}catch{toast("Invalid backup file.");}};r.readAsText(f);
+  };
+  document.getElementById("resetData").onclick=()=>{
+    if(confirm("Reset all matches, picks, and scores?")){state=seed();save();toast("App reset.");}
+  };
+  function renderAll(){renderMatches();renderMyPicks();renderLeaderboard();renderAdmin();}
+  renderAll();
+  cloudLoad();
+})();
+</script>
+</body>
+</html>
