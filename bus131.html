@@ -14,7 +14,7 @@ h1{margin:0 0 5px;font-size:28px} .sub{color:var(--muted);margin-bottom:14px}
 .card{background:rgba(17,29,48,.98);border:1px solid var(--border);border-radius:20px;padding:17px;margin-bottom:14px;box-shadow:0 12px 30px rgba(0,0,0,.25)}
 button,select{font:inherit} button{width:100%;border:0;border-radius:14px;padding:13px 14px;font-size:16px;font-weight:800;cursor:pointer;margin:5px 0}
 .primary{background:var(--green);color:#062413}.primary.direction{color:#062413}.secondary.direction{color:#f8fafc} .secondary{background:var(--card2);color:var(--text);border:1px solid var(--border)} .alt{background:#0c4a6e;color:#e0f2fe}
-.direction{text-align:left} .direction small{display:block;margin-top:6px;font-size:14px;font-weight:700}.primary.direction small{color:#062b15!important}.secondary.direction small{color:#c7d2e3!important}
+.direction{text-align:left}.direction span{opacity:1}
 .status{color:var(--muted);font-size:13px;line-height:1.4;margin:8px 0 12px}
 .hidden{display:none!important}
 .toolbar{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
@@ -42,8 +42,8 @@ select{width:100%;background:var(--card2);color:var(--text);border:1px solid var
   <div class="card">
     <div id="locationStatus" class="status">Choose a direction, or use your location.</div>
     <button id="locationBtn" class="secondary" type="button">📍 Use My Location</button>
-    <button id="goingBtn" class="primary direction" type="button">Going<small>Ernston Rd & Washington Rd → Port Authority</small></button>
-    <button id="backBtn" class="secondary direction" type="button">Coming Back<small>Port Authority → Ernston Rd & Washington Rd</small></button>
+    <button id="goingBtn" class="primary direction" type="button"><span style="display:block;color:#062413;-webkit-text-fill-color:#062413;opacity:1">Going</span><span style="display:block;margin-top:6px;font-size:14px;font-weight:750;color:#062413;-webkit-text-fill-color:#062413;opacity:1">Ernston Rd &amp; Washington Rd → Port Authority</span></button>
+    <button id="backBtn" class="secondary direction" type="button"><span style="display:block;color:#f8fafc;-webkit-text-fill-color:#f8fafc;opacity:1">Coming Back</span><span style="display:block;margin-top:6px;font-size:14px;font-weight:750;color:#c7d2e3;-webkit-text-fill-color:#c7d2e3;opacity:1">Port Authority → Ernston Rd &amp; Washington Rd</span></button>
   </div>
 </section>
 
