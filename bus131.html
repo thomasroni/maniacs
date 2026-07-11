@@ -12,7 +12,26 @@
 <div class="app">
   <div class="top"><div class="title">🚌 Commute</div><div class="clock"><div id="nowText">--</div><div id="dayLabel">Schedule</div></div></div>
   <section id="home" class="card"><div class="screenTitle">Choose Direction</div><div id="locationStatus" class="locStatus">Checking your nearest side…</div><div id="directionButtons"></div><div class="stack"><button class="secondary smallBtn" onclick="detectLocation()">📍 Use My Location</button><button class="secondary smallBtn" onclick="swapOrder()">↕️ Swap</button></div><div class="footer">131 is shown first. 139 appears automatically when no 131 bus is available in the next 2 hours, and you can open 139 any time.</div></section>
-  <section id="scheduleScreen" class="hidden"><div class="card"><button class="secondary" onclick="showHome()">← Back</button><div class="screenTitle" id="dirTitle"></div><div class="route" id="dirRoute"></div><div id="activeNote" class="gate"></div><button id="toggleBtn" onclick="toggleFull()">📅 View Full Schedule</button><button class="alt" id="show139Btn" onclick="toggle139()">🚌 Show 139 Option</button><div id="list"></div></div></section>
+  <section id="scheduleScreen" class="hidden">
+  <div class="card">
+    <button class="secondary" onclick="showHome()">← Back</button>
+    <div class="screenTitle" id="dirTitle"></div>
+    <div class="route" id="dirRoute"></div>
+
+    <label for="scheduleDay" class="label" style="display:block;margin:12px 0 6px">Schedule to view</label>
+    <select id="scheduleDay" onchange="changeScheduleDay(this.value)" style="width:100%;background:#0f172a;color:#f8fafc;border:1px solid #253044;border-radius:14px;padding:13px 14px;font-size:16px;font-weight:700;margin-bottom:10px">
+      <option value="auto">Today / Auto</option>
+      <option value="weekday">Monday–Friday</option>
+      <option value="sat">Saturday</option>
+      <option value="sun">Sunday</option>
+    </select>
+
+    <div id="activeNote" class="gate"></div>
+    <button id="toggleBtn" onclick="toggleFull()">📅 View Full Schedule</button>
+    <button class="alt" id="show139Btn" onclick="toggle139()">🚌 Show 139 Option</button>
+    <div id="list"></div>
+  </div>
+</section>
 </div>
 <script>
 const stops={ernston:{name:'Ernston Rd & Washington Rd',lat:40.4587,lon:-74.3020},oldbridge:{name:'Old Bridge Park & Ride',lat:40.4119,lon:-74.3013},pabt:{name:'Port Authority Bus Terminal',lat:40.7569,lon:-73.9903}};
@@ -33,7 +52,7 @@ const routeData={
 };
 let currentDir='going', full=false, showAlt=false, order=['going','back'], autoOpened=false, selectedSchedule='auto';
 function renderHome(){const wrap=document.getElementById('directionButtons');wrap.innerHTML='';order.forEach((dir,idx)=>{const d=schedules[dir];const b=document.createElement('button');b.className=idx===0?'primary':'';b.onclick=()=>openDirection(dir);b.innerHTML=`${d.title}${idx===0?'<span class="pill">Nearest</span>':''}<span class="routeName">131: ${d.route}</span><span class="routeName">139 backup: ${d.fallbackRoute}</span>`;wrap.appendChild(b);});}
-function detectLocation(){const status=document.getElementById('locationStatus');if(!navigator.geolocation){status.textContent='Location not supported. Use Swap if needed.';renderHome();return;}status.textContent='Checking your location…';navigator.geolocation.getCurrentPosition(pos=>{const here={lat:pos.coords.latitude,lon:pos.coords.longitude};const dNJ=Math.min(distanceMiles(here,stops.ernston),distanceMiles(here,stops.oldbridge));const dNY=distanceMiles(here,stops.pabt);if(dNJ<=dNY){order=['going','back'];status.textContent=`Nearest commute side: New Jersey (${dNJ.toFixed(1)} mi). Showing Going first.`;}else{order=['back','going'];status.textContent=`Nearest commute side: Port Authority (${dNY.toFixed(1)} mi). Showing Coming Back first.`;}localStorage.setItem('busOrder',JSON.stringify(order));renderHome();if(!autoOpened){autoOpened=true;openDirection(order[0]);}},()=>{status.textContent='Location permission not available. Showing saved/default order.';renderHome();},{enableHighAccuracy:true,timeout:8000,maximumAge:60000});}
+function detectLocation(){const status=document.getElementById('locationStatus');if(!navigator.geolocation){status.textContent='Location not supported. Use Swap if needed.';renderHome();return;}status.textContent='Checking your location…';navigator.geolocation.getCurrentPosition(pos=>{const here={lat:pos.coords.latitude,lon:pos.coords.longitude};const dNJ=Math.min(distanceMiles(here,stops.ernston),distanceMiles(here,stops.oldbridge));const dNY=distanceMiles(here,stops.pabt);if(dNJ<=dNY){order=['going','back'];status.textContent=`Nearest commute side: New Jersey (${dNJ.toFixed(1)} mi). Showing Going first.`;}else{order=['back','going'];status.textContent=`Nearest commute side: Port Authority (${dNY.toFixed(1)} mi). Showing Coming Back first.`;}localStorage.setItem('busOrder',JSON.stringify(order));renderHome();if(!autoOpened){autoOpened=true;openDirection(order[0]);}},()=>{status.textContent='Location permission not available. Choose a direction below.';renderHome();},{enableHighAccuracy:true,timeout:8000,maximumAge:60000});}
 function swapOrder(){order=[...order].reverse();localStorage.setItem('busOrder',JSON.stringify(order));document.getElementById('locationStatus').textContent='Manual order saved.';renderHome();}
 function distanceMiles(a,b){const R=3958.8,toRad=x=>x*Math.PI/180;const dLat=toRad(b.lat-a.lat),dLon=toRad(b.lon-a.lon),lat1=toRad(a.lat),lat2=toRad(b.lat);const h=Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
 function parseTimeOnDate(t,baseDate){const [hm,ap]=t.split(' ');let [h,m]=hm.split(':').map(Number);if(ap==='PM'&&h!==12)h+=12;if(ap==='AM'&&h===12)h=0;const d=new Date(baseDate);d.setHours(h,m,0,0);return d;}
@@ -78,7 +97,7 @@ function render(){
    else list.innerHTML+='<div class="empty">No 131 or 139 buses found in the next 2 hours.</div>';
  }
 }
-function openDirection(dir){currentDir=dir;full=false;showAlt=false;selectedSchedule='auto';document.getElementById('scheduleDay').value='auto';document.getElementById('home').classList.add('hidden');document.getElementById('scheduleScreen').classList.remove('hidden');render();}
+function openDirection(dir){currentDir=dir;full=false;showAlt=false;selectedSchedule='auto';const selector=document.getElementById('scheduleDay');if(selector)selector.value='auto';document.getElementById('home').classList.add('hidden');document.getElementById('scheduleScreen').classList.remove('hidden');render();}
 function showHome(){document.getElementById('scheduleScreen').classList.add('hidden');document.getElementById('home').classList.remove('hidden');renderHome();}
 function toggleFull(){full=!full;render();}
 function toggle139(){showAlt=!showAlt;full=false;render();}
