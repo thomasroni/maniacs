@@ -97,7 +97,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;margin-top:22px}
   <section id="leaderboard" class="panel">
     <div class="card">
       <h3 style="margin-top:0">Leaderboard</h3>
-      <div class="small">Correct result = 3 points • Exact score = 2 bonus points</div>
+      <div class="small">Exact score = 5 points • Correct winner/draw = 3 points • Wrong result = 0</div>
       <div id="board"></div>
     </div>
   </section>
@@ -147,7 +147,24 @@ const uid=()=>crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random()
 const toast=m=>{const t=$("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1700)};
 const fmt=v=>v?new Date(v).toLocaleString([], {weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"Time not set";
 const result=(a,b)=>a>b?"A":a<b?"B":"D";
-const points=(p,m)=>m.status!=="final"?0:(p.choice===result(m.finalScoreA,m.finalScoreB)?3:0)+((p.scoreA===m.finalScoreA&&p.scoreB===m.finalScoreB)?2:0);
+const points=(p,m)=>{
+  if(m.status!=="final") return 0;
+  const predictedA=Number(p.scoreA);
+  const predictedB=Number(p.scoreB);
+  const actualA=Number(m.finalScoreA);
+  const actualB=Number(m.finalScoreB);
+
+  if(predictedA===actualA && predictedB===actualB) return 5;
+  return result(predictedA,predictedB)===result(actualA,actualB) ? 3 : 0;
+};
+
+const pointReason=(p,m)=>{
+  if(m.status!=="final") return "";
+  const pts=points(p,m);
+  if(pts===5) return "Exact score";
+  if(pts===3) return "Correct result";
+  return "Wrong result";
+};
 
 function normalize(){
   if(!Array.isArray(state.matches))state.matches=[];
@@ -282,7 +299,7 @@ function renderAll(){
   box.innerHTML=state.matches.map(m=>{
     const picks=state.picks.filter(p=>p.matchId===m.id);
     if(!picks.length)return "";
-    return `<div class="item"><b>${esc(m.teamA)} vs ${esc(m.teamB)}</b>${picks.map(p=>`<div style="margin-top:8px">${esc(p.player)}: <b>${p.scoreA} – ${p.scoreB}</b>${m.status==="final"?` • ${points(p,m)} pts`:""}</div>`).join("")}</div>`;
+    return `<div class="item"><b>${esc(m.teamA)} vs ${esc(m.teamB)}</b>${picks.map(p=>`<div style="margin-top:10px"><b>${esc(p.player)}</b>: ${p.scoreA} – ${p.scoreB}${m.status==="final"?` • <b>${points(p,m)} pts</b><div class="small">${pointReason(p,m)}</div>`:""}</div>`).join("")}</div>`;
   }).join("")||'<div class="empty">No picks submitted yet.</div>';
 }
 function renderBoard(){
