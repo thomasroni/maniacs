@@ -64,7 +64,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;margin-top:22px}
 </style>
 </head>
 <body>
-<header><div class="wrap"><h1>⚽ Maniacs Football Pool</h1><p>Friendly predictions • Live scores • Points only</p></div></header>
+<header><div class="wrap"><h1>⚽ Maniacs Football Pool</h1><p>Friendly predictions • Admin-controlled picks • Live scores</p></div></header>
 <main>
   <div class="card row">
     <div><b>Shared database</b><div id="syncText" class="small">Connecting…</div></div>
@@ -164,7 +164,9 @@ function normalize(){
   });
 }
 function isPickLocked(m){
-  return m.status==="live"||m.status==="final"||m.status==="cancelled"||m.status==="locked"||(m.kickoff&&new Date(m.kickoff)<=new Date());
+  // Picks are controlled only by the admin.
+  // Kickoff time alone does not lock the match.
+  return m.status==="live"||m.status==="final"||m.status==="cancelled"||m.status==="locked";
 }
 function statusInfo(m){
   if(m.status==="live")return {text:`LIVE${m.minute!==""?` • ${m.minute}'`:""}`,cls:"live"};
@@ -249,7 +251,7 @@ function renderMatches(){
         <div><label>${esc(m.teamB)} score</label><input id="b-${m.id}" type="number" min="0" max="20" value="${existing?.scoreB??0}" ${locked?"disabled":""}></div>
       </div>
       <input type="hidden" id="c-${m.id}" value="${existing?.choice||""}">
-      ${!locked?`<button class="btn primary full" data-save="${m.id}">${existing?"Update My Pick":"Save My Pick"}</button>`:`<button class="btn secondary full" disabled>Picks Locked</button><div class="small" style="margin-top:8px">Admin must reopen this match before members can enter or change picks.</div>`}
+      ${!locked?`<button class="btn primary full" data-save="${m.id}">${existing?"Update My Pick":"Save My Pick"}</button>`:`<button class="btn secondary full" disabled>Picks Locked</button><div class="small" style="margin-top:8px">Admin has locked this match. Tap Reopen Picks in Admin to allow entries again.</div>`}
       ${existing?`<div class="saved">✓ Pick saved: ${esc(m.teamA)} ${existing.scoreA} – ${existing.scoreB} ${esc(m.teamB)}</div>`:""}`
       }
     </div>`;
