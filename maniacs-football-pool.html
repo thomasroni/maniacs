@@ -332,6 +332,7 @@ function renderAdmin(){
     </div>
     <div class="admin-actions">
       <button class="btn primary" data-final="${m.id}">${m.status==="final"?"Update Final Score":"Finish Match"}</button>
+      ${m.status==="final"?`<button class="btn secondary" data-undo-final="${m.id}">Undo Final</button>`:""}
       <button class="btn warn" data-cancel="${m.id}">${m.status==="cancelled"?"Restore Match":"Cancel Match"}</button>
       <button class="btn danger" data-delete="${m.id}">Delete</button>
     </div>
@@ -369,11 +370,36 @@ function renderAdmin(){
   });
   document.querySelectorAll("[data-final]").forEach(b=>b.onclick=()=>{
     const id=b.dataset.final,m=state.matches.find(x=>x.id===id);
-    m.finalScoreA=Number($("fa-"+id).value);
-    m.finalScoreB=Number($("fb-"+id).value);
-    m.currentScoreA=m.finalScoreA;m.currentScoreB=m.finalScoreB;
-    m.status="final";m.locked=true;m.minute="";
-    save();toast("Final score saved and leaderboard updated.");
+    const finalA=Number($("fa-"+id).value);
+    const finalB=Number($("fb-"+id).value);
+    const actionText=m.status==="final"?"Update final score":"Finish match";
+    const ok=confirm(
+      `${actionText}?\n\n${m.teamA} ${finalA} - ${finalB} ${m.teamB}\n\nThis will lock picks and update the leaderboard.`
+    );
+    if(!ok)return;
+    m.finalScoreA=finalA;
+    m.finalScoreB=finalB;
+    m.currentScoreA=finalA;
+    m.currentScoreB=finalB;
+    m.status="final";
+    m.locked=true;
+    m.minute="";
+    save();
+    toast("Final score saved and leaderboard updated.");
+  });
+  document.querySelectorAll("[data-undo-final]").forEach(b=>b.onclick=()=>{
+    const id=b.dataset.undoFinal,m=state.matches.find(x=>x.id===id);
+    const ok=confirm(
+      `Undo final result?\n\n${m.teamA} ${m.finalScoreA ?? m.currentScoreA} - ${m.finalScoreB ?? m.currentScoreB} ${m.teamB}\n\nLeaderboard points for this match will be removed until it is finalized again.`
+    );
+    if(!ok)return;
+    m.currentScoreA=m.finalScoreA ?? m.currentScoreA ?? 0;
+    m.currentScoreB=m.finalScoreB ?? m.currentScoreB ?? 0;
+    m.status="live";
+    m.locked=true;
+    m.minute="";
+    save();
+    toast("Final result undone. Match is LIVE again.");
   });
   document.querySelectorAll("[data-cancel]").forEach(b=>b.onclick=()=>{
     const m=state.matches.find(x=>x.id===b.dataset.cancel);
