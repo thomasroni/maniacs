@@ -98,8 +98,18 @@ footer{text-align:center;color:var(--muted);font-size:11px;margin-top:22px}
   <section id="picks" class="panel active">
     <div class="card">
       <label>Your name</label>
-      <input id="playerName" placeholder="Enter your name">
-      <div class="small" style="margin-top:6px">Your name is saved on this phone.</div>
+      <select id="playerSelect">
+        <option value="">Select your name</option>
+      </select>
+
+      <div id="newNameWrap" class="hidden">
+        <label>New member name</label>
+        <input id="newPlayerName" placeholder="Enter full name">
+        <button id="addPlayerName" class="btn primary full">Add New Name</button>
+      </div>
+
+      <button id="showNewName" class="btn secondary full">Add New Person</button>
+      <div class="small" style="margin-top:6px">Your selected name is remembered on this phone.</div>
     </div>
     <div id="matches"></div>
   </section>
@@ -256,16 +266,85 @@ document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".tab,.panel").forEach(x=>x.classList.remove("active"));
   b.classList.add("active");$(b.dataset.tab).classList.add("active");render();
 });
-$("playerName").value=localStorage.getItem("maniacsPlayerName")||"";
-$("playerName").oninput=e=>{localStorage.setItem("maniacsPlayerName",e.target.value.trim());renderMatches()};
+function getKnownPlayers(){
+  let extra=[];
+  try{ extra=JSON.parse(localStorage.getItem("maniacsExtraPlayers")||"[]"); }catch{}
+  const names=[...new Set(
+    [
+      ...state.picks.map(p=>String(p.player||"").trim()),
+      ...extra.map(n=>String(n||"").trim())
+    ].filter(Boolean)
+  )];
+  return names.sort((a,b)=>a.localeCompare(b));
+}
 
-function render(){normalize();renderMatches();renderAll();renderBoard();renderAdmin()}
+function selectedPlayer(){
+  return $("playerSelect")?.value.trim() || "";
+}
+
+function renderPlayerDropdown(){
+  const select=$("playerSelect");
+  if(!select)return;
+
+  const remembered=localStorage.getItem("maniacsPlayerName")||"";
+  const current=select.value||remembered;
+  const names=getKnownPlayers();
+
+  select.innerHTML=
+    '<option value="">Select your name</option>' +
+    names.map(name=>`<option value="${esc(name)}">${esc(name)}</option>`).join("");
+
+  if(current && names.some(n=>n.toLowerCase()===current.toLowerCase())){
+    const exact=names.find(n=>n.toLowerCase()===current.toLowerCase());
+    select.value=exact;
+  } else {
+    select.value="";
+  }
+}
+
+$("playerSelect").onchange=e=>{
+  localStorage.setItem("maniacsPlayerName",e.target.value);
+  renderMatches();
+};
+
+$("showNewName").onclick=()=>{
+  $("newNameWrap").classList.remove("hidden");
+  $("showNewName").classList.add("hidden");
+  $("newPlayerName").focus();
+};
+
+$("addPlayerName").onclick=()=>{
+  const name=$("newPlayerName").value.trim();
+  if(!name){toast("Enter the new member name.");return}
+
+  const existing=getKnownPlayers().find(n=>n.toLowerCase()===name.toLowerCase());
+  const finalName=existing||name;
+
+  localStorage.setItem("maniacsPlayerName",finalName);
+
+  // Add a temporary local-only member marker until their first pick is saved.
+  const extra=JSON.parse(localStorage.getItem("maniacsExtraPlayers")||"[]");
+  if(!extra.some(n=>n.toLowerCase()===finalName.toLowerCase())){
+    extra.push(finalName);
+    localStorage.setItem("maniacsExtraPlayers",JSON.stringify(extra));
+  }
+
+  $("newPlayerName").value="";
+  $("newNameWrap").classList.add("hidden");
+  $("showNewName").classList.remove("hidden");
+  renderPlayerDropdown();
+  $("playerSelect").value=finalName;
+  renderMatches();
+  toast("New name added.");
+};
+
+function render(){normalize();renderPlayerDropdown();renderMatches();renderAll();renderBoard();renderAdmin()}
 function renderMatches(){
   const box=$("matches");
   if(!state.matches.length){box.innerHTML='<div class="card empty">No matches added yet.</div>';return}
   box.innerHTML=[...state.matches].sort((a,b)=>new Date(a.kickoff||0)-new Date(b.kickoff||0)).map(m=>{
     const info=statusInfo(m),locked=isPickLocked(m);
-    const player=$("playerName").value.trim();
+    const player=selectedPlayer();
     const existing=state.picks.find(p=>p.matchId===m.id&&p.player.toLowerCase()===player.toLowerCase());
     const votes={A:0,D:0,B:0};
     state.picks.filter(p=>p.matchId===m.id).forEach(p=>votes[p.choice]=(votes[p.choice]||0)+1);
@@ -309,8 +388,8 @@ function renderMatches(){
   document.querySelectorAll("[data-save]").forEach(b=>b.onclick=()=>savePick(b.dataset.save));
 }
 function savePick(id){
-  const player=$("playerName").value.trim();
-  if(!player){toast("Enter your name first.");$("playerName").focus();return}
+  const player=selectedPlayer();
+  if(!player){toast("Select your name first.");$("playerSelect").focus();return}
   const m=state.matches.find(x=>x.id===id);
   if(!m||isPickLocked(m)){toast("This match is locked.");return}
   const a=Number($("a-"+id).value),b=Number($("b-"+id).value);
