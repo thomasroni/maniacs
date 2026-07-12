@@ -67,6 +67,16 @@ input,select{width:100%;padding:11px;border:1px solid #d0d5dd;border-radius:10px
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#101828;color:#fff;padding:10px 14px;border-radius:10px;font-size:12px;opacity:0;transition:.2s;z-index:99;pointer-events:none}.toast.show{opacity:1}
 footer{text-align:center;color:var(--muted);font-size:11px;margin-top:22px}
 .admin-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.admin-toolbar{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:end;margin-bottom:12px}
+.admin-section{border:1px solid var(--line);border-radius:14px;background:#fff;margin-bottom:12px;overflow:hidden}
+.admin-section-head{width:100%;border:0;background:#f8fafc;padding:13px 14px;display:flex;justify-content:space-between;align-items:center;font-weight:900;text-align:left}
+.admin-section-body{padding:0 12px 12px}
+.admin-match{border:1px solid var(--line);border-radius:12px;margin-top:10px;overflow:hidden;background:#fff}
+.admin-match-head{width:100%;border:0;background:#fff;padding:12px;display:flex;justify-content:space-between;align-items:center;text-align:left}
+.admin-match-body{padding:0 12px 12px}
+.chev{font-size:14px;color:var(--muted)}
+.compact-score{font-size:12px;color:var(--muted);margin-top:3px}
+@media(max-width:620px){.admin-toolbar{grid-template-columns:1fr 1fr}.admin-toolbar .search-wrap{grid-column:1/-1}}
 @media(max-width:620px){.grid2,.grid3{grid-template-columns:1fr}.tab{font-size:11px;padding:10px 2px}}
 </style>
 </head>
@@ -130,6 +140,14 @@ footer{text-align:center;color:var(--muted);font-size:11px;margin-top:22px}
       </div>
       <div class="card">
         <h3 style="margin-top:0">Manage Matches</h3>
+        <div class="admin-toolbar">
+          <div class="search-wrap">
+            <label style="margin-top:0">Search team</label>
+            <input id="adminSearch" placeholder="Example: England">
+          </div>
+          <button id="expandAll" class="btn secondary">Expand All</button>
+          <button id="collapseAll" class="btn secondary">Collapse All</button>
+        </div>
         <div id="adminMatches"></div>
       </div>
     </div>
@@ -147,6 +165,8 @@ const SUPABASE_KEY="sb_publishable_1gUsJnbBzdphciR-WcYy7w_1Vn-n-X1";
 const ROW_ID="main", PIN="2016", LOCAL_KEY="maniacsFootballPoolV3";
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let state={matches:[],picks:[]},channel=null,saving=false;
+const expandedSections={upcoming:true,live:true,finished:false,cancelled:false};
+const expandedMatches=new Set();
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
@@ -395,31 +415,96 @@ $("addMatch").onclick=()=>{
 function renderAdmin(){
   const box=$("adminMatches");
   if(!box)return;
-  if(!state.matches.length){box.innerHTML='<div class="empty">No matches.</div>';return}
-  box.innerHTML=state.matches.map(m=>`<div class="item">
-    <div class="row"><div><b>${esc(m.teamA)} vs ${esc(m.teamB)}</b><div class="small">${fmt(m.kickoff)}</div></div><span class="badge ${statusInfo(m).cls}">${statusInfo(m).text}</span></div><label>Kickoff time</label><input id="ko-${m.id}" type="datetime-local" value="${m.kickoff||""}">
-    <div class="grid3">
-      <div><label>Current ${esc(m.teamA)}</label><input id="ca-${m.id}" type="number" min="0" value="${m.currentScoreA??0}"></div>
-      <div><label>Current ${esc(m.teamB)}</label><input id="cb-${m.id}" type="number" min="0" value="${m.currentScoreB??0}"></div>
-      <div><label>Minute</label><input id="min-${m.id}" type="number" min="0" max="130" value="${m.minute??""}" placeholder="72"></div>
-    </div>
-    <div class="admin-actions">
-      <button class="btn blue" data-live="${m.id}">Update Current Score</button>
-      <button class="btn secondary" data-reopen="${m.id}">Reopen Picks</button>
-      <button class="btn warn" data-lock="${m.id}">Lock Picks</button>
-      <button class="btn secondary" data-kickoff="${m.id}">Save Kickoff</button>
-    </div>
-    <div class="grid2">
-      <div><label>Final ${esc(m.teamA)}</label><input id="fa-${m.id}" type="number" min="0" value="${m.finalScoreA??m.currentScoreA??0}"></div>
-      <div><label>Final ${esc(m.teamB)}</label><input id="fb-${m.id}" type="number" min="0" value="${m.finalScoreB??m.currentScoreB??0}"></div>
-    </div>
-    <div class="admin-actions">
-      <button class="btn primary" data-final="${m.id}">${m.status==="final"?"Update Final Score":"Finish Match"}</button>
-      ${m.status==="final"?`<button class="btn secondary" data-undo-final="${m.id}">Undo Final</button>`:""}
-      <button class="btn warn" data-cancel="${m.id}">${m.status==="cancelled"?"Restore Match":"Cancel Match"}</button>
-      <button class="btn danger" data-delete="${m.id}">Delete</button>
-    </div>
-  </div>`).join("");
+
+  const query=($("adminSearch")?.value||"").trim().toLowerCase();
+  const filtered=state.matches.filter(m=>{
+    if(!query)return true;
+    return `${m.teamA} ${m.teamB} ${m.competition||""}`.toLowerCase().includes(query);
+  });
+
+  const groups={
+    upcoming:filtered.filter(m=>m.status==="open"||m.status==="locked"),
+    live:filtered.filter(m=>m.status==="live"),
+    finished:filtered.filter(m=>m.status==="final"),
+    cancelled:filtered.filter(m=>m.status==="cancelled")
+  };
+
+  const labels={
+    upcoming:"📅 Upcoming Matches",
+    live:"🟢 Live Matches",
+    finished:"🏁 Finished Matches",
+    cancelled:"❌ Cancelled Matches"
+  };
+
+  const renderMatch=m=>{
+    const open=expandedMatches.has(m.id);
+    const status=statusInfo(m);
+    const scoreText=m.status==="final"
+      ? `${m.finalScoreA ?? 0} – ${m.finalScoreB ?? 0}`
+      : (m.status==="live" ? `${m.currentScoreA ?? 0} – ${m.currentScoreB ?? 0}` : fmt(m.kickoff));
+
+    return `<div class="admin-match">
+      <button class="admin-match-head" data-toggle-match="${m.id}">
+        <div>
+          <b>${esc(m.teamA)} vs ${esc(m.teamB)}</b>
+          <div class="compact-score">${scoreText}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="badge ${status.cls}">${status.text}</span>
+          <span class="chev">${open?"▼":"▶"}</span>
+        </div>
+      </button>
+      <div class="admin-match-body ${open?"":"hidden"}">
+        <label>Kickoff time</label>
+        <input id="ko-${m.id}" type="datetime-local" value="${m.kickoff||""}">
+        <div class="grid3">
+          <div><label>Current ${esc(m.teamA)}</label><input id="ca-${m.id}" type="number" min="0" value="${m.currentScoreA??0}"></div>
+          <div><label>Current ${esc(m.teamB)}</label><input id="cb-${m.id}" type="number" min="0" value="${m.currentScoreB??0}"></div>
+          <div><label>Minute</label><input id="min-${m.id}" type="number" min="0" max="130" value="${m.minute??""}" placeholder="72"></div>
+        </div>
+        <div class="admin-actions">
+          <button class="btn blue" data-live="${m.id}">Update Current Score</button>
+          <button class="btn secondary" data-reopen="${m.id}">Reopen Picks</button>
+          <button class="btn warn" data-lock="${m.id}">Lock Picks</button>
+          <button class="btn secondary" data-kickoff="${m.id}">Save Kickoff</button>
+        </div>
+        <div class="grid2">
+          <div><label>Final ${esc(m.teamA)}</label><input id="fa-${m.id}" type="number" min="0" value="${m.finalScoreA??m.currentScoreA??0}"></div>
+          <div><label>Final ${esc(m.teamB)}</label><input id="fb-${m.id}" type="number" min="0" value="${m.finalScoreB??m.currentScoreB??0}"></div>
+        </div>
+        <div class="admin-actions">
+          <button class="btn primary" data-final="${m.id}">${m.status==="final"?"Update Final Score":"Finish Match"}</button>
+          ${m.status==="final"?`<button class="btn secondary" data-undo-final="${m.id}">Undo Final</button>`:""}
+          <button class="btn warn" data-cancel="${m.id}">${m.status==="cancelled"?"Restore Match":"Cancel Match"}</button>
+          <button class="btn danger" data-delete="${m.id}">Delete</button>
+        </div>
+      </div>
+    </div>`;
+  };
+
+  box.innerHTML=Object.entries(groups).map(([key,list])=>{
+    const open=expandedSections[key];
+    return `<div class="admin-section">
+      <button class="admin-section-head" data-toggle-section="${key}">
+        <span>${labels[key]} (${list.length})</span>
+        <span>${open?"▼":"▶"}</span>
+      </button>
+      <div class="admin-section-body ${open?"":"hidden"}">
+        ${list.length?list.map(renderMatch).join(""):'<div class="empty">No matches in this section.</div>'}
+      </div>
+    </div>`;
+  }).join("");
+
+  document.querySelectorAll("[data-toggle-section]").forEach(b=>b.onclick=()=>{
+    const key=b.dataset.toggleSection;
+    expandedSections[key]=!expandedSections[key];
+    renderAdmin();
+  });
+  document.querySelectorAll("[data-toggle-match]").forEach(b=>b.onclick=()=>{
+    const id=b.dataset.toggleMatch;
+    if(expandedMatches.has(id))expandedMatches.delete(id);else expandedMatches.add(id);
+    renderAdmin();
+  });
 
   document.querySelectorAll("[data-live]").forEach(b=>b.onclick=()=>{
     const id=b.dataset.live,m=state.matches.find(x=>x.id===id);
@@ -431,58 +516,40 @@ function renderAdmin(){
   });
   document.querySelectorAll("[data-reopen]").forEach(b=>b.onclick=()=>{
     const m=state.matches.find(x=>x.id===b.dataset.reopen);
-    m.status="open";
-    m.locked=false;
-    m.final=false;
-    m.minute="";
-    save();
-    toast("Match reopened for picks.");
+    m.status="open";m.locked=false;m.final=false;m.minute="";
+    save();toast("Match reopened for picks.");
   });
   document.querySelectorAll("[data-lock]").forEach(b=>b.onclick=()=>{
     const m=state.matches.find(x=>x.id===b.dataset.lock);
-    m.status="locked";
-    m.locked=true;
-    save();
-    toast("Picks locked.");
+    m.status="locked";m.locked=true;
+    save();toast("Picks locked.");
   });
   document.querySelectorAll("[data-kickoff]").forEach(b=>b.onclick=()=>{
     const id=b.dataset.kickoff,m=state.matches.find(x=>x.id===id);
     m.kickoff=$("ko-"+id).value;
-    save();
-    toast("Kickoff time updated.");
+    save();toast("Kickoff time updated.");
   });
   document.querySelectorAll("[data-final]").forEach(b=>b.onclick=()=>{
     const id=b.dataset.final,m=state.matches.find(x=>x.id===id);
     const finalA=Number($("fa-"+id).value);
     const finalB=Number($("fb-"+id).value);
-    const actionText=m.status==="final"?"Update final score":"Finish match";
     const ok=confirm(
-      `${actionText}?\n\n${m.teamA} ${finalA} - ${finalB} ${m.teamB}\n\nThis will lock picks and update the leaderboard.`
+      `${m.status==="final"?"Update final score":"Finish match"}?\n\n${m.teamA} ${finalA} - ${finalB} ${m.teamB}\n\nThis will lock picks and update the leaderboard.`
     );
     if(!ok)return;
-    m.finalScoreA=finalA;
-    m.finalScoreB=finalB;
-    m.currentScoreA=finalA;
-    m.currentScoreB=finalB;
-    m.status="final";
-    m.locked=true;
-    m.minute="";
-    save();
-    toast("Final score saved and leaderboard updated.");
+    m.finalScoreA=finalA;m.finalScoreB=finalB;
+    m.currentScoreA=finalA;m.currentScoreB=finalB;
+    m.status="final";m.locked=true;m.minute="";
+    save();toast("Final score saved and leaderboard updated.");
   });
   document.querySelectorAll("[data-undo-final]").forEach(b=>b.onclick=()=>{
     const id=b.dataset.undoFinal,m=state.matches.find(x=>x.id===id);
-    const ok=confirm(
-      `Undo final result?\n\n${m.teamA} ${m.finalScoreA ?? m.currentScoreA} - ${m.finalScoreB ?? m.currentScoreB} ${m.teamB}\n\nLeaderboard points for this match will be removed until it is finalized again.`
-    );
+    const ok=confirm("Undo this final result? Leaderboard points for this match will be removed.");
     if(!ok)return;
-    m.currentScoreA=m.finalScoreA ?? m.currentScoreA ?? 0;
-    m.currentScoreB=m.finalScoreB ?? m.currentScoreB ?? 0;
-    m.status="live";
-    m.locked=true;
-    m.minute="";
-    save();
-    toast("Final result undone. Match is LIVE again.");
+    m.currentScoreA=m.finalScoreA??m.currentScoreA??0;
+    m.currentScoreB=m.finalScoreB??m.currentScoreB??0;
+    m.status="live";m.locked=true;m.minute="";
+    save();toast("Final result undone.");
   });
   document.querySelectorAll("[data-cancel]").forEach(b=>b.onclick=()=>{
     const m=state.matches.find(x=>x.id===b.dataset.cancel);
@@ -494,10 +561,22 @@ function renderAdmin(){
     if(confirm("Delete this match and all its picks?")){
       state.matches=state.matches.filter(x=>x.id!==b.dataset.delete);
       state.picks=state.picks.filter(x=>x.matchId!==b.dataset.delete);
+      expandedMatches.delete(b.dataset.delete);
       save();
     }
   });
 }
+$("adminSearch").oninput=()=>renderAdmin();
+$("expandAll").onclick=()=>{
+  Object.keys(expandedSections).forEach(k=>expandedSections[k]=true);
+  state.matches.forEach(m=>expandedMatches.add(m.id));
+  renderAdmin();
+};
+$("collapseAll").onclick=()=>{
+  Object.keys(expandedSections).forEach(k=>expandedSections[k]=false);
+  expandedMatches.clear();
+  renderAdmin();
+};
 render();load();
 })();
 </script>
