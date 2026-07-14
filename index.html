@@ -186,6 +186,8 @@ const CLOUD_TABLE='maniacs_training_state';
 const CLOUD_ROW_ID='main';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let cloudSaving=false, cloudApplying=false, cloudTimer=null, cloudChannel=null;
+const CLOUD_CLIENT_ID=sessionStorage.getItem('mtc_cloud_client_id')||('c'+Date.now().toString(36)+Math.random().toString(36).slice(2));
+sessionStorage.setItem('mtc_cloud_client_id',CLOUD_CLIENT_ID);
 
 function setSync(kind,text){
   if(!els.syncBadge||!els.syncText)return;
@@ -195,15 +197,20 @@ function setSync(kind,text){
 }
 function safeGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function safeSet(k,v){
-  try{localStorage.setItem(k,v)}catch(e){}
+  const next=String(v);
+  let previous=null;
+  try{previous=localStorage.getItem(k)}catch(e){}
+  if(previous===next)return false;
+  try{localStorage.setItem(k,next)}catch(e){}
   if(!cloudApplying && (k==='mtc_students'||k==='mtc_activeStudent'||k.startsWith('mtc_done_'))) scheduleCloudSave();
+  return true;
 }
 function cloudSnapshot(){
   let students=[];
   try{students=JSON.parse(localStorage.getItem('mtc_students')||'[]')}catch(e){}
   const completion={};
   try{Object.keys(localStorage).filter(k=>k.startsWith('mtc_done_')).forEach(k=>completion[k]=localStorage.getItem(k));}catch(e){}
-  return {app:'Maniacs Training Companion',version:'1.3.0-cloud',students:Array.isArray(students)?students:[],activeStudentId:safeGet('mtc_activeStudent')||'',completion,updatedAt:new Date().toISOString()};
+  return {app:'Maniacs Training Companion',version:'1.3.1-cloud',students:Array.isArray(students)?students:[],activeStudentId:safeGet('mtc_activeStudent')||'',completion,clientId:CLOUD_CLIENT_ID,updatedAt:new Date().toISOString()};
 }
 function applyCloudSnapshot(data){
   if(!data||typeof data!=='object')return;
@@ -219,7 +226,7 @@ function applyCloudSnapshot(data){
 }
 function scheduleCloudSave(){
   clearTimeout(cloudTimer);
-  cloudTimer=setTimeout(saveCloudState,700);
+  cloudTimer=setTimeout(saveCloudState,1200);
 }
 async function saveCloudState(){
   if(cloudSaving||cloudApplying)return;
@@ -247,9 +254,11 @@ function subscribeCloud(){
   if(cloudChannel)return;
   cloudChannel=db.channel('maniacs-training-companion-v1')
     .on('postgres_changes',{event:'*',schema:'public',table:CLOUD_TABLE,filter:'id=eq.'+CLOUD_ROW_ID},payload=>{
-      if(payload.new?.data&&!cloudSaving){
-        applyCloudSnapshot(payload.new.data);
-        loadSettings();refreshAll();
+      const incoming=payload.new?.data;
+      if(incoming && !cloudSaving && incoming.clientId!==CLOUD_CLIENT_ID){
+        applyCloudSnapshot(incoming);
+        loadSettings();
+        refreshHome();renderThisWeek();renderRemainingPlan();renderCoachDashboard();renderStudentControls();
         setSync('online','Updated from another device.');
       }
     }).subscribe();
