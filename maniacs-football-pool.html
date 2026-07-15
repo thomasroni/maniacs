@@ -76,6 +76,12 @@ footer{text-align:center;color:var(--muted);font-size:11px;margin-top:22px}
 .admin-match-body{padding:0 12px 12px}
 .chev{font-size:14px;color:var(--muted)}
 .compact-score{font-size:12px;color:var(--muted);margin-top:3px}
+.finished-compact{padding:10px 12px}
+.finished-row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center}
+.finished-teams{font-size:14px;font-weight:900}
+.finished-score{font-size:18px;font-weight:900;white-space:nowrap}
+.finished-pick{margin-top:6px;font-size:11px;color:var(--muted)}
+.finished-pick b{color:var(--ink)}
 @media(max-width:620px){.admin-toolbar{grid-template-columns:1fr 1fr}.admin-toolbar .search-wrap{grid-column:1/-1}}
 @media(max-width:620px){.grid2,.grid3{grid-template-columns:1fr}.tab{font-size:11px;padding:10px 2px}}
 </style>
@@ -342,7 +348,16 @@ function render(){normalize();renderPlayerDropdown();renderMatches();renderAll()
 function renderMatches(){
   const box=$("matches");
   if(!state.matches.length){box.innerHTML='<div class="card empty">No matches added yet.</div>';return}
-  box.innerHTML=[...state.matches].sort((a,b)=>new Date(a.kickoff||0)-new Date(b.kickoff||0)).map(m=>{
+  const statusOrder={live:0,open:1,locked:2,final:3,cancelled:4};
+  box.innerHTML=[...state.matches].sort((a,b)=>{
+    const sa=statusOrder[a.status]??1;
+    const sb=statusOrder[b.status]??1;
+    if(sa!==sb)return sa-sb;
+    if(a.status==="final"&&b.status==="final"){
+      return new Date(b.kickoff||0)-new Date(a.kickoff||0);
+    }
+    return new Date(a.kickoff||0)-new Date(b.kickoff||0);
+  }).map(m=>{
     const info=statusInfo(m),locked=isPickLocked(m);
     const player=selectedPlayer();
     const existing=state.picks.find(p=>p.matchId===m.id&&p.player.toLowerCase()===player.toLowerCase());
@@ -351,6 +366,20 @@ function renderMatches(){
     const showScore=m.status==="live"||m.status==="final";
     const scoreA=m.status==="final"?m.finalScoreA:m.currentScoreA;
     const scoreB=m.status==="final"?m.finalScoreB:m.currentScoreB;
+    if(m.status==="final"){
+      return `<div class="match finished-compact">
+        <div class="finished-row">
+          <div>
+            <div class="finished-teams">${esc(m.teamA)} vs ${esc(m.teamB)}</div>
+            <div class="meta">${esc(m.competition||"Football Match")} • ${fmt(m.kickoff)}</div>
+          </div>
+          <div class="finished-score">${m.finalScoreA ?? 0} – ${m.finalScoreB ?? 0}</div>
+          <span class="badge final">FINAL</span>
+        </div>
+        ${existing?`<div class="finished-pick">Your pick: <b>${existing.scoreA} – ${existing.scoreB}</b> • ${pointReason(existing,m)} • ${points(existing,m)} pts</div>`:""}
+      </div>`;
+    }
+
     return `<div class="match">
       <div class="row"><div><div class="teams">${esc(m.teamA)} vs ${esc(m.teamB)}</div><div class="meta">${esc(m.competition||"Football Match")} • ${fmt(m.kickoff)}</div></div><span class="badge ${info.cls}">${info.text}</span></div>
       ${showScore?`<div class="scoreboard">
