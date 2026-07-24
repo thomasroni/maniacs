@@ -186,7 +186,7 @@ function rulesStorageKey(){
 function renderRules(){
  const c=currentCompetition();if(!c)return;
  const dates=competitionDates(c);
- const period=periodLabel(c)||'Competition period not set';
+ const period=formatCompetitionPeriod(c)||'Competition period not set';
  const pool=prizePool();
  const first=pool*Number(c.first_place_percent||70)/100;
  const second=pool*Number(c.second_place_percent||20)/100;
