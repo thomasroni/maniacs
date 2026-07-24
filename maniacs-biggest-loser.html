@@ -112,7 +112,7 @@ const money=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).
 const num=(n,d=1)=>Number(n||0).toFixed(d);
 const setStatus=(t,ok=true)=>{el('status').textContent=t;el('status').style.background=ok?'#dcfce7':'#fee2e2';el('status').style.color=ok?'#166534':'#991b1b'};
 function closeModal(id){el(id).classList.add('hidden')}
-function calc(p){let loss=(p.initial_weight!=null&&p.final_weight!=null)?Number(p.initial_weight)-Number(p.final_weight):null;let pct=(loss!=null&&Number(p.initial_weight)>0)?loss/Number(p.initial_weight)*100:null;return {...p,loss,pct}}
+function calc(p){let loss=(p.starting_weight!=null&&p.ending_weight!=null)?Number(p.starting_weight)-Number(p.ending_weight):null;let pct=(loss!=null&&Number(p.starting_weight)>0)?loss/Number(p.starting_weight)*100:null;return {...p,loss,pct}}
 function currentCompetition(){return competitions.find(c=>c.id===selectedCompetitionId)}
 function currentPeople(){return participants.filter(p=>p.competition_id===selectedCompetitionId).map(calc).sort((a,b)=>(b.pct??-999)-(a.pct??-999))}
 
@@ -121,10 +121,10 @@ async function loadAll(){
   const [c,p,m]=await Promise.all([
    sb.from('blc_competitions').select('*').order('start_date',{ascending:false,nullsFirst:false}).order('created_at',{ascending:false}),
    sb.from('blc_participants').select('*'),
-   sb.from('maniacs_members').select('*').order('name')
+   sb.from('maniacs_members').select('*').order('full_name')
   ]);
   if(c.error) throw c.error;if(p.error) throw p.error;if(m.error) throw m.error;
-  competitions=c.data||[];participants=p.data||[];members=m.data||[];
+  competitions=c.data||[];members=m.data||[];const memberMap=Object.fromEntries(members.map(x=>[x.id,x.full_name]));participants=(p.data||[]).map(x=>({...x,name:memberMap[x.member_id]||'Unknown'}));
   if(!selectedCompetitionId||!competitions.some(x=>x.id===selectedCompetitionId)) selectedCompetitionId=competitions.find(x=>x.status==='active')?.id||competitions[0]?.id||null;
   render();setStatus('Connected');
  }catch(e){console.error(e);setStatus('Could not connect to BLC database',false);alert('BLC database tables are not available. Run the provided maniacs-blc-database.sql once in Supabase.')}
@@ -135,16 +135,16 @@ function render(){
  sel.onchange=()=>{selectedCompetitionId=sel.value;render()};
  const c=currentCompetition(), people=currentPeople();
  if(!c){el('kpis').innerHTML='<div class="card">Create a BLC or import Excel history.</div>';el('leaderRows').innerHTML='';el('prizes').innerHTML='';return}
- const completed=people.filter(p=>p.final_weight!=null), totalLoss=completed.reduce((s,p)=>s+(p.loss||0),0), totalInitial=completed.reduce((s,p)=>s+Number(p.initial_weight||0),0);
+ const completed=people.filter(p=>p.ending_weight!=null), totalLoss=completed.reduce((s,p)=>s+(p.loss||0),0), totalInitial=completed.reduce((s,p)=>s+Number(p.starting_weight||0),0);
  const paid=people.filter(p=>p.paid).length,pool=paid*Number(c.entry_fee||0);
  el('kpis').innerHTML=[
   ['Participants',people.length],['Total loss',num(totalLoss)+' lb'],['Group loss %',totalInitial?num(totalLoss/totalInitial*100,2)+'%':'—'],['Calories burnt',Math.round(totalLoss*3500).toLocaleString()]
  ].map(x=>`<div class="card kpi"><span>${x[0]}</span><strong>${x[1]}</strong></div>`).join('');
  el('leaderRows').innerHTML=people.map((p,i)=>`<tr class="${i<3?'rank'+(i+1):''}">
- <td>${p.pct==null?'—':i+1}</td><td><b>${escapeHtml(p.name)}</b></td><td>${p.initial_weight==null?'—':num(p.initial_weight)}</td><td>${p.final_weight==null?'—':num(p.final_weight)}</td>
+ <td>${p.pct==null?'—':i+1}</td><td><b>${escapeHtml(p.name)}</b></td><td>${p.starting_weight==null?'—':num(p.starting_weight)}</td><td>${p.ending_weight==null?'—':num(p.ending_weight)}</td>
  <td class="${p.loss>0?'pos':p.loss<0?'neg':''}">${p.loss==null?'—':num(p.loss)}</td><td class="${p.pct>0?'pos':p.pct<0?'neg':''}">${p.pct==null?'—':num(p.pct,2)+'%'}</td>
  <td>${p.paid?'Yes':'No'}</td><td><button class="light" onclick="openParticipant('${p.id}')">Edit</button></td></tr>`).join('');
- const splits=[Number(c.first_pct),Number(c.second_pct),Number(c.third_pct)];
+ const splits=[Number(c.first_place_percent),Number(c.second_place_percent),Number(c.third_place_percent)];
  el('prizes').innerHTML=`<p><b>Paid:</b> ${paid} / ${people.length}</p><p><b>Prize pool:</b> ${money(pool)}</p>`+
  ['Winner','Runner up','2nd runner up'].map((label,i)=>`<div class="card" style="margin:8px 0"><b>${label}</b><br>${people[i]?.pct!=null?escapeHtml(people[i].name):'—'} <span class="muted">(${money(pool*splits[i]/100)})</span></div>`).join('');
 }
@@ -153,10 +153,10 @@ function openCompetition(){
  editingCompetitionId=null;el('competitionTitle').textContent='New BLC';el('cName').value='';el('cStatus').value='active';el('cStart').value='';el('cEnd').value='';el('cFee').value=20;el('cFirst').value=70;el('cSecond').value=20;el('cThird').value=10;el('deleteCompetitionBtn').classList.add('hidden');el('competitionModal').classList.remove('hidden')
 }
 function editCompetition(){
- const c=currentCompetition();if(!c)return;editingCompetitionId=c.id;el('competitionTitle').textContent='Edit BLC';el('cName').value=c.name;el('cStatus').value=c.status;el('cStart').value=c.start_date||'';el('cEnd').value=c.end_date||'';el('cFee').value=c.entry_fee;el('cFirst').value=c.first_pct;el('cSecond').value=c.second_pct;el('cThird').value=c.third_pct;el('deleteCompetitionBtn').classList.remove('hidden');el('competitionModal').classList.remove('hidden')
+ const c=currentCompetition();if(!c)return;editingCompetitionId=c.id;el('competitionTitle').textContent='Edit BLC';el('cName').value=c.name;el('cStatus').value=c.status;el('cStart').value=c.start_date||'';el('cEnd').value=c.end_date||'';el('cFee').value=c.entry_fee;el('cFirst').value=c.first_place_percent;el('cSecond').value=c.second_place_percent;el('cThird').value=c.third_place_percent;el('deleteCompetitionBtn').classList.remove('hidden');el('competitionModal').classList.remove('hidden')
 }
 async function saveCompetition(){
- const row={name:el('cName').value.trim(),status:el('cStatus').value,start_date:el('cStart').value||null,end_date:el('cEnd').value||null,entry_fee:Number(el('cFee').value||20),first_pct:Number(el('cFirst').value||70),second_pct:Number(el('cSecond').value||20),third_pct:Number(el('cThird').value||10)};
+ const row={name:el('cName').value.trim(),status:el('cStatus').value,start_date:el('cStart').value||null,end_date:el('cEnd').value||null,entry_fee:Number(el('cFee').value||20),first_place_percent:Number(el('cFirst').value||70),second_place_percent:Number(el('cSecond').value||20),third_place_percent:Number(el('cThird').value||10)};
  if(!row.name)return alert('Enter BLC name');
  let q=editingCompetitionId?sb.from('blc_competitions').update(row).eq('id',editingCompetitionId).select().single():sb.from('blc_competitions').insert(row).select().single();
  const r=await q;if(r.error)return alert(r.error.message);selectedCompetitionId=r.data.id;closeModal('competitionModal');await loadAll()
@@ -165,7 +165,7 @@ async function deleteCompetition(){if(!confirm('Delete this BLC and all particip
 
 function refreshMemberOptions(selectedId=''){
  const sel=el('pMember');
- sel.innerHTML='<option value="">Select member</option>'+members.map(m=>`<option value="${m.id}" ${m.id===selectedId?'selected':''}>${escapeHtml(m.name)}</option>`).join('')+'<option value="__new__">+ Add new member</option>';
+ sel.innerHTML='<option value="">Select member</option>'+members.map(m=>`<option value="${m.id}" ${m.id===selectedId?'selected':''}>${escapeHtml(m.full_name)}</option>`).join('')+'<option value="__new__">+ Add new member</option>';
  sel.onchange=()=>el('newMemberWrap').classList.toggle('hidden',sel.value!=='__new__');
  el('newMemberWrap').classList.toggle('hidden',sel.value!=='__new__');
 }
@@ -173,20 +173,20 @@ function openParticipant(id=null){
  if(!selectedCompetitionId)return alert('Create or select a BLC first');editingParticipantId=id;const p=participants.find(x=>x.id===id);
  el('participantTitle').textContent=p?'Edit participant':'Add participant';
  refreshMemberOptions(p?.member_id||'');
- el('pNewMember').value='';el('pPaid').value=String(p?.paid??true);el('pInitial').value=p?.initial_weight??'';el('pFinal').value=p?.final_weight??'';el('pNotes').value=p?.notes||'';el('deleteParticipantBtn').classList.toggle('hidden',!p);el('participantModal').classList.remove('hidden')
+ el('pNewMember').value='';el('pPaid').value=String(p?.paid??true);el('pInitial').value=p?.starting_weight??'';el('pFinal').value=p?.ending_weight??'';el('pNotes').value=p?.notes||'';el('deleteParticipantBtn').classList.toggle('hidden',!p);el('participantModal').classList.remove('hidden')
 }
 async function saveParticipant(){
  let memberId=el('pMember').value;let memberName='';
  if(memberId==='__new__'){
   memberName=el('pNewMember').value.trim();if(!memberName)return alert('Enter new member name');
-  const existing=members.find(m=>m.name.toLowerCase()===memberName.toLowerCase());
-  if(existing){memberId=existing.id;memberName=existing.name}else{
-   const mr=await sb.from('maniacs_members').insert({name:memberName}).select().single();if(mr.error)return alert(mr.error.message);memberId=mr.data.id;
+  const existing=members.find(m=>m.full_name.toLowerCase()===memberName.toLowerCase());
+  if(existing){memberId=existing.id;memberName=existing.full_name}else{
+   const mr=await sb.from('maniacs_members').insert({full_name:memberName}).select().single();if(mr.error)return alert(mr.error.message);memberId=mr.data.id;
   }
  } else {
-  const m=members.find(x=>x.id===memberId);if(!m)return alert('Select a member');memberName=m.name;
+  const m=members.find(x=>x.id===memberId);if(!m)return alert('Select a member');memberName=m.full_name;
  }
- const row={competition_id:selectedCompetitionId,member_id:memberId,name:memberName,paid:el('pPaid').value==='true',initial_weight:el('pInitial').value===''?null:Number(el('pInitial').value),final_weight:el('pFinal').value===''?null:Number(el('pFinal').value),notes:el('pNotes').value.trim()};
+ const row={competition_id:selectedCompetitionId,member_id:memberId,paid:el('pPaid').value==='true',starting_weight:el('pInitial').value===''?null:Number(el('pInitial').value),ending_weight:el('pFinal').value===''?null:Number(el('pFinal').value),notes:el('pNotes').value.trim()};
  const r=editingParticipantId?await sb.from('blc_participants').update(row).eq('id',editingParticipantId):await sb.from('blc_participants').insert(row);
  if(r.error)return alert(r.error.message);closeModal('participantModal');await loadAll()
 }
@@ -204,13 +204,13 @@ async function seedHistory(){
  setStatus('Importing history…');
  for(const item of EXCEL_HISTORY){
   if(competitions.some(c=>c.name===item.name))continue;
-  const cr=await sb.from('blc_competitions').insert({name:item.name,status:'completed',entry_fee:20,first_pct:70,second_pct:20,third_pct:10}).select().single();
+  const cr=await sb.from('blc_competitions').insert({name:item.name,status:'completed',entry_fee:20,first_place_percent:70,second_place_percent:20,third_place_percent:10}).select().single();
   if(cr.error){alert(cr.error.message);break}
   const rows=[];
   for(const p of item.participants){
-   let member=members.find(m=>m.name.toLowerCase()===p.name.toLowerCase());
-   if(!member){const mr=await sb.from('maniacs_members').insert({name:p.name}).select().single();if(mr.error){alert(mr.error.message);return}member=mr.data;members.push(member)}
-   rows.push({competition_id:cr.data.id,member_id:member.id,name:p.name,initial_weight:p.initial_weight,final_weight:p.final_weight,paid:p.paid});
+   let member=members.find(m=>m.full_name.toLowerCase()===p.name.toLowerCase());
+   if(!member){const mr=await sb.from('maniacs_members').insert({full_name:p.name}).select().single();if(mr.error){alert(mr.error.message);return}member=mr.data;members.push(member)}
+   rows.push({competition_id:cr.data.id,member_id:member.id,starting_weight:p.initial_weight,ending_weight:p.final_weight,paid:p.paid});
   }
   if(rows.length){const pr=await sb.from('blc_participants').insert(rows);if(pr.error){alert(pr.error.message);break}}
  }
@@ -222,6 +222,7 @@ sb.channel('blc-live')
  .on('postgres_changes',{event:'*',schema:'public',table:'blc_competitions'},loadAll)
  .on('postgres_changes',{event:'*',schema:'public',table:'blc_participants'},loadAll)
  .on('postgres_changes',{event:'*',schema:'public',table:'maniacs_members'},loadAll)
+ .on('postgres_changes',{event:'*',schema:'public',table:'blc_weighins'},loadAll)
  .subscribe();
 loadAll();
 </script>
