@@ -123,11 +123,10 @@
 <div id="weighinModal" class="modal hidden"><div class="modalbox"><h2>Record Weigh-in</h2><div class="formgrid"><label><span>Participant</span><select id="wParticipant"></select></label><label><span>Date</span><input id="wDate" type="date"></label><label><span>Weight (lb)</span><input id="wWeight" type="number" step="0.1"></label></div><div class="toolbar"><button onclick="saveWeighin()">Save</button><button class="light" onclick="closeModal('weighinModal')">Cancel</button></div></div></div>
 <div id="cloneModal" class="modal hidden"><div class="modalbox"><h2>Copy Participants</h2><p class="muted">Copies member names and paid status from another competition. Starting weights remain blank.</p><label><span>Copy from</span><select id="cloneSource"></select></label><div class="toolbar"><button onclick="cloneParticipants()">Copy</button><button class="light" onclick="closeModal('cloneModal')">Cancel</button></div></div></div>
 <div id="importModal" class="modal hidden"><div class="modalbox" style="max-width:980px">
-<h2>Bulk Import Competition Spreadsheet</h2>
+<div class="import-modal-head"><h2>Bulk Import Competition Spreadsheet</h2><button class="import-close-top" onclick="closeModal('importModal')">✕ Close</button></div>
 <p class="muted">Choose one Excel workbook or CSV file. Every valid worksheet is imported automatically. Competitions with matching start and end dates are deleted and recreated.</p>
 <div class="import-drop" onclick="el('importFile').click()"><b>📁 Choose Excel or CSV file</b><br><span class="muted" id="importFileName">All worksheet tabs will be imported automatically</span><input id="importFile" class="hidden" type="file" accept=".xlsx,.xls,.csv" onchange="readImportFile(this.files[0])"></div>
 <div id="importMessage"></div><div id="importPreview" class="import-preview"></div><div id="importLog" class="import-log hidden"></div>
-<div class="toolbar" style="margin-top:14px;position:sticky;bottom:0;background:#fff;padding-top:10px"><button class="light" onclick="closeModal('importModal')">Close</button></div>
 </div></div>
 
 <div id="foodModal" class="modal hidden"><div class="modalbox">
@@ -554,53 +553,56 @@ function openImportHistory(){
 function parseImportSheet(sheetName){
  const ws=importWorkbook?.Sheets?.[sheetName];
  if(!ws)return {sheetName,error:'Worksheet not found'};
- const matrix=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true,blankrows:false});
+ const matrix=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true,blankrows:true});
  if(!matrix.length)return {sheetName,error:'No data'};
- const headerIndex=detectImportHeader(matrix),headers=makeUniqueHeaders(matrix[headerIndex]);
- const nameCol=pickColumn(headers,[/^name$/,/participant/,/member/,/person/])||headers[1]||headers[0];
- const startWeightCol=pickColumn(headers,[/initial.*weight/,/start.*weight/,/starting.*weight/,/^initial$/,/^start$/]);
- const finalWeightCol=pickColumn(headers,[/final.*weight/,/end.*weight/,/ending.*weight/,/current.*weight/,/^final$/,/^ending$/]);
- const paidCol=pickColumn(headers,[/^paid$/,/payment/,/fee paid/]);
- const startDateCol=pickColumn(headers,[/start.*date/,/begin.*date/]);
- const endDateCol=pickColumn(headers,[/end.*date/,/final.*date/,/close.*date/]);
- const compCol=pickColumn(headers,[/competition/,/challenge/,/^blc$/,/period name/]);
- if(!startWeightCol)return {sheetName,error:'Starting-weight column not found'};
 
- // A worksheet can contain a second Body Composition table below the weight
- // table. Import only the first weight table and stop when a summary, winner,
- // or body-composition header begins. Otherwise visceral-fat values can be
- // mistaken for body weights.
- const dataRows=[];
- let consecutiveBlank=0;
- for(let i=headerIndex+1;i<matrix.length;i++){
-  const arr=Array.isArray(matrix[i])?matrix[i]:[];
-  const normalized=arr.map(normalizeHeader);
-  const joined=normalized.filter(Boolean).join(' ');
-  const rowName=String(arr[headers.indexOf(nameCol)]??'').trim();
-  const rowNameNorm=normalizeHeader(rowName);
-  const looksLikeBodyHeader=/visceral|body fat|percent fat|muscle|body composition/.test(joined)&&/(initial|final)/.test(joined);
-  const looksLikeSummary=/^(total loss|total loss percent|winner|runner up|runner-up|second runner up|prize|ranking|rank)$/i.test(rowNameNorm)||/^total\b/.test(rowNameNorm);
-  const isBlank=!arr.some(v=>String(v??'').trim()!=='');
-  if(isBlank){consecutiveBlank++;if(consecutiveBlank>=2)break;continue}
-  consecutiveBlank=0;
-  if(looksLikeBodyHeader||looksLikeSummary)break;
-  dataRows.push({arr,rowNumber:i+1});
+ // Locate the FIRST weight table only. Some historical sheets contain body
+ // composition and exercise tables farther down, so generic header scoring can
+ // accidentally select the wrong table.
+ let headerIndex=-1;
+ for(let i=0;i<Math.min(matrix.length,40);i++){
+  const cells=(matrix[i]||[]).map(normalizeHeader);
+  const hasName=cells.some(x=>x==='name'||x.includes('participant name')||x.includes('member name'));
+  const hasInitial=cells.some(x=>x.includes('initial weight')||x.includes('starting weight')||x.includes('start weight'));
+  if(hasName&&hasInitial){headerIndex=i;break}
  }
+ if(headerIndex<0)return {sheetName,error:'Weight-table header not found'};
 
- const parsed=dataRows.map(({arr,rowNumber})=>{
-  const r=Object.fromEntries(headers.map((h,i)=>[h,arr?.[i]??'']));
-  return {row:rowNumber,name:String(r[nameCol]||'').trim(),initial_weight:parseWeight(r[startWeightCol]),final_weight:finalWeightCol?parseWeight(r[finalWeightCol]):null,paid:paidCol?parseBool(r[paidCol],true):true,start_date:startDateCol?excelDateToISO(r[startDateCol]):'',end_date:endDateCol?excelDateToISO(r[endDateCol]):'',competition:compCol?String(r[compCol]||'').trim():''};
- }).filter(r=>r.name&&r.initial_weight!=null&&r.initial_weight>=50&&r.initial_weight<=800);
+ const rawHeaders=matrix[headerIndex]||[];
+ const normalizedHeaders=rawHeaders.map(normalizeHeader);
+ const nameIndex=normalizedHeaders.findIndex(x=>x==='name'||x.includes('participant name')||x.includes('member name'));
+ const initialIndex=normalizedHeaders.findIndex(x=>x.includes('initial weight')||x.includes('starting weight')||x.includes('start weight'));
+ const finalIndex=normalizedHeaders.findIndex(x=>x.includes('final weight')||x.includes('ending weight')||x.includes('end weight')||x.includes('current weight'));
+ const paidIndex=normalizedHeaders.findIndex(x=>x==='paid'||x.includes('payment')||x.includes('fee paid'));
+ if(nameIndex<0||initialIndex<0)return {sheetName,error:'Name or starting-weight column not found'};
+
+ const rows=[];
+ let started=false;
+ for(let i=headerIndex+1;i<matrix.length;i++){
+  const arr=matrix[i]||[];
+  const name=String(arr[nameIndex]??'').trim().replace(/\s+/g,' ');
+  const initial=parseWeight(arr[initialIndex]);
+  const final=finalIndex>=0?parseWeight(arr[finalIndex]):null;
+  const firstCell=normalizeHeader(arr[0]);
+  const nameNorm=normalizeHeader(name);
+
+  // Once participant rows begin, the first blank name or a summary/prize row
+  // ends the weight table. This intentionally ignores every lower table.
+  if(started&&(!name||initial==null))break;
+  if(!name||initial==null)continue;
+  if(/^(total|winner|runner up|runner-up|2nd runner up|second runner up|best body composition|ranking|rank)/.test(nameNorm))break;
+  if(/^(winner|runner up|runner-up|2nd runner up|second runner up|best body composition)/.test(firstCell))break;
+  if(initial<50||initial>800)continue;
+
+  started=true;
+  rows.push({row:i+1,name,initial_weight:initial,final_weight:final,paid:paidIndex>=0?parseBool(arr[paidIndex],true):true,start_date:'',end_date:'',competition:''});
+ }
+ if(!rows.length)return {sheetName,error:'No valid participant rows in the first weight table'};
 
  const dedup=[],seen=new Set();
- for(const r of parsed){const key=r.name.toLowerCase().replace(/\s+/g,' ');if(seen.has(key))continue;seen.add(key);dedup.push(r)}
- if(!dedup.length)return {sheetName,error:'No valid participant rows in the weight table'};
- const metadata=matrix.slice(0,headerIndex).flat().map(x=>String(x||'').trim()).filter(Boolean);
- const inferred=inferDatesFromText([sheetName,metadata.join(' '),importFileBaseName].join(' '));
- const first=dedup[0]||{};
- const metadataCompetition=metadata.find(x=>/blc|biggest loser|challenge|competition/i.test(x));
- const automaticName=first.competition||metadataCompetition||sheetName||importFileBaseName||'Imported Competition';
- return {sheetName,rows:dedup,name:automaticName,start:first.start_date||inferred.start,end:first.end_date||inferred.end,invalid:Math.max(0,dataRows.length-dedup.length),bodyCompositionIgnored:true};
+ for(const r of rows){const key=r.name.toLowerCase();if(seen.has(key))continue;seen.add(key);dedup.push(r)}
+ const inferred=inferDatesFromText([sheetName,importFileBaseName].join(' '));
+ return {sheetName,rows:dedup,name:sheetName||importFileBaseName||'Imported Competition',start:inferred.start,end:inferred.end,invalid:rows.length-dedup.length};
 }
 async function readImportFile(file){
  if(!file)return;
@@ -619,14 +621,15 @@ async function readImportFile(file){
   let importedCompetitions=0,importedParticipants=0,newMembers=0,replaced=0;
   for(let i=0;i<valid.length;i++){
    const item=valid[i];write(`Importing ${i+1}/${valid.length}: ${item.sheetName}`);
-   const ex=await sb.from('blc_competitions').select('*').eq('start_date',item.start).eq('end_date',item.end).order('created_at',{ascending:true});
-   if(ex.error)throw ex.error;
-
-   // Reuse one matching competition instead of deleting it first. This avoids an
-   // empty history card when database delete policies or realtime refreshes race
-   // with the import. Any duplicate competition records are removed only after
-   // the participant rows have been saved and verified.
-   let competition=ex.data?.[0]||null;
+   // Match by dates OR competition name. Older empty records sometimes have
+   // missing dates but the correct sheet/competition name, which previously left
+   // a second 0-person card behind.
+   const allComp=await sb.from('blc_competitions').select('*').order('created_at',{ascending:true});
+   if(allComp.error)throw allComp.error;
+   const normName=v=>String(v||'').trim().toLowerCase().replace(/[^a-z0-9]/g,'');
+   const matches=(allComp.data||[]).filter(c=>(c.start_date===item.start&&c.end_date===item.end)||normName(c.name)===normName(item.name));
+   const ex={data:matches};
+   let competition=matches[0]||null;
    if(competition){
     const upd=await sb.from('blc_competitions').update({name:item.name,status:'completed',start_date:item.start,end_date:item.end,entry_fee:20,first_place_percent:70,second_place_percent:20,third_place_percent:10}).eq('id',competition.id).select().single();
     if(upd.error)throw upd.error;
@@ -668,7 +671,7 @@ async function readImportFile(file){
     try{await deleteCompetitionTree(duplicate);replaced++}catch(cleanupError){console.warn('Duplicate cleanup failed',cleanupError)}
    }
    importedCompetitions++;importedParticipants+=savedCount;selectedCompetitionId=competition.id;
-   write(`  Saved and verified ${savedCount} participants`);
+   write(`  Saved and verified ${savedCount} participants: ${item.rows.map(x=>x.name).join(', ')}`);
   }
   await loadAll();showTab('history');
   el('importMessage').innerHTML=`<div class="import-ok"><b>Bulk import completed automatically.</b><br>${importedCompetitions} competition(s), ${importedParticipants} participant(s), ${replaced} matching competition(s) replaced.${skipped.length?` ${skipped.length} worksheet(s) skipped.`:''}</div>`;
