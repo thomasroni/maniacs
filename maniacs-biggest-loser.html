@@ -594,9 +594,12 @@ async function readImportFile(file){
   let importedCompetitions=0,importedParticipants=0,newMembers=0,replaced=0;
   for(let i=0;i<valid.length;i++){
    const item=valid[i];write(`Importing ${i+1}/${valid.length}: ${item.sheetName}`);
-   const ex=await sb.from('blc_competitions').select('*').eq('start_date',item.start).eq('end_date',item.end).limit(1);
+   const ex=await sb.from('blc_competitions').select('*').eq('start_date',item.start).eq('end_date',item.end);
    if(ex.error)throw ex.error;
-   if(ex.data?.length){write(`  Replacing matching competition ${fmtDate(item.start)} – ${fmtDate(item.end)}`);await deleteCompetitionTree(ex.data[0]);replaced++}
+   if(ex.data?.length){
+    write(`  Removing ${ex.data.length} matching competition record(s) for ${fmtDate(item.start)} – ${fmtDate(item.end)}`);
+    for(const oldCompetition of ex.data){await deleteCompetitionTree(oldCompetition);replaced++}
+   }
    const cr=await sb.from('blc_competitions').insert({name:item.name,status:'completed',start_date:item.start,end_date:item.end,entry_fee:20,first_place_percent:70,second_place_percent:20,third_place_percent:10}).select().single();
    if(cr.error)throw cr.error;
    const participantRows=[];
@@ -606,9 +609,13 @@ async function readImportFile(file){
     if(!members.some(x=>x.id===m.id)){members.push(m);if(before===members.length-1)newMembers++}
     participantRows.push({competition_id:cr.data.id,member_id:m.id,starting_weight:person.initial_weight,ending_weight:person.final_weight,paid:person.paid,notes:'Imported from '+item.sheetName});
    }
-   const pr=await sb.from('blc_participants').insert(participantRows);if(pr.error)throw pr.error;
-   importedCompetitions++;importedParticipants+=participantRows.length;selectedCompetitionId=cr.data.id;
-   write(`  Saved ${participantRows.length} participants`);
+   const pr=await sb.from('blc_participants').insert(participantRows).select('id');if(pr.error)throw pr.error;
+   const verify=await sb.from('blc_participants').select('id',{count:'exact',head:true}).eq('competition_id',cr.data.id);
+   if(verify.error)throw verify.error;
+   const savedCount=Number(verify.count||0);
+   if(savedCount!==participantRows.length)throw new Error(`${item.sheetName}: expected ${participantRows.length} participants but database saved ${savedCount}.`);
+   importedCompetitions++;importedParticipants+=savedCount;selectedCompetitionId=cr.data.id;
+   write(`  Saved and verified ${savedCount} participants`);
   }
   await loadAll();showTab('history');
   el('importMessage').innerHTML=`<div class="import-ok"><b>Bulk import completed automatically.</b><br>${importedCompetitions} competition(s), ${importedParticipants} participant(s), ${replaced} matching competition(s) replaced.${skipped.length?` ${skipped.length} worksheet(s) skipped.`:''}</div>`;
@@ -618,7 +625,17 @@ async function readImportFile(file){
 }
 function prepareImportPreview(){}
 async function runSpreadsheetImport(){}
-async function deleteCompetitionTree(comp){const ids=participants.filter(p=>p.competition_id===comp.id).map(p=>p.id);if(ids.length){if(foodLogAvailable){const fr=await sb.from('blc_food_logs').delete().in('participant_id',ids);if(fr.error)throw fr.error}const wr=await sb.from('blc_weighins').delete().in('participant_id',ids);if(wr.error)throw wr.error;const pr=await sb.from('blc_participants').delete().eq('competition_id',comp.id);if(pr.error)throw pr.error}else{const pr=await sb.from('blc_participants').delete().eq('competition_id',comp.id);if(pr.error)throw pr.error}const cr=await sb.from('blc_competitions').delete().eq('id',comp.id);if(cr.error)throw cr.error}
+async function deleteCompetitionTree(comp){
+ const lookup=await sb.from('blc_participants').select('id').eq('competition_id',comp.id);
+ if(lookup.error)throw lookup.error;
+ const ids=(lookup.data||[]).map(p=>p.id);
+ if(ids.length){
+  if(foodLogAvailable){const fr=await sb.from('blc_food_logs').delete().in('participant_id',ids);if(fr.error)throw fr.error}
+  const wr=await sb.from('blc_weighins').delete().in('participant_id',ids);if(wr.error)throw wr.error;
+ }
+ const pr=await sb.from('blc_participants').delete().eq('competition_id',comp.id);if(pr.error)throw pr.error;
+ const cr=await sb.from('blc_competitions').delete().eq('id',comp.id);if(cr.error)throw cr.error;
+}
 
 async function repairHistory(){
 if(!confirm('Repair historical weights and remove duplicate participant rows? One correct record per member will be kept for each competition.'))return;
