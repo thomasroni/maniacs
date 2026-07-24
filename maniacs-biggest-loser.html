@@ -186,8 +186,8 @@ function rulesStorageKey(){
 function renderRules(){
  const c=currentCompetition();if(!c)return;
  const dates=competitionDates(c);
- const period=formatCompetitionPeriod(c)||'Competition period not set';
- const pool=prizePool();
+ const period=cleanCompetitionLabel(c)||'Competition period not set';
+ const pool=currentPeople().filter(p=>p.paid).length*Number(c.entry_fee||0);
  const first=pool*Number(c.first_place_percent||70)/100;
  const second=pool*Number(c.second_place_percent||20)/100;
  const third=pool*Number(c.third_place_percent||10)/100;
@@ -196,12 +196,12 @@ function renderRules(){
  if(el('rulesSecond'))el('rulesSecond').textContent=money(second);
  if(el('rulesThird'))el('rulesThird').textContent=money(third);
  if(el('rulesDatesText')){
-  const start=dates.start?formatDate(dates.start):'the start date';
-  const end=dates.end?formatDate(dates.end):'the end date';
+  const start=dates.start?fmtDate(dates.start):'the start date';
+  const end=dates.end?fmtDate(dates.end):'the end date';
   el('rulesDatesText').innerHTML=`The challenge starts on <b>${start}</b> and ends on <b>${end}</b>. Submit the final scale photo by <b>10:00 PM on ${end}</b>.`;
  }
  if(el('rulesWinnerText')){
-  const end=dates.end?formatDate(dates.end):'the competition end date';
+  const end=dates.end?fmtDate(dates.end):'the competition end date';
   el('rulesWinnerText').innerHTML=`Winners will be announced after <b>${end}</b>, based on participants who submitted a valid final weight.`;
  }
  const agree=el('rulesAgree');
