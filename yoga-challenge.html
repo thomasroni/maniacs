@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <title>Maniacs 30-Day Yoga Challenge</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{
+      --bg:#f3f4f6;--card:#fff;--ink:#172033;--muted:#667085;--line:#e5e7eb;
+      --brand:#f59e0b;--brand2:#ea580c;--good:#15803d;--danger:#b91c1c;--nav:#111827;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+    button,input,select,textarea{font:inherit}
+    button{cursor:pointer}
+    .app{max-width:900px;margin:auto;min-height:100vh;padding-bottom:86px}
+    header{background:linear-gradient(135deg,var(--nav),#263248);color:#fff;padding:22px 18px 18px;position:relative;overflow:hidden}
+    header:after{content:"🧘";font-size:110px;opacity:.08;position:absolute;right:10px;top:-18px;transform:rotate(-12deg)}
+    h1{font-size:25px;margin:0 0 5px}.subtitle{opacity:.78;font-size:14px}
+    .status{display:inline-flex;align-items:center;gap:7px;margin-top:12px;padding:7px 10px;border-radius:999px;background:#ffffff18;font-size:12px}
+    .dot{width:8px;height:8px;border-radius:50%;background:#fbbf24}.dot.online{background:#4ade80}
+    main{padding:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:13px;box-shadow:0 4px 18px #1118270c}
+    .hero{background:linear-gradient(135deg,#fff7ed,#fffbeb);border-color:#fed7aa}
+    .row{display:flex;gap:10px;align-items:center}.between{justify-content:space-between}.wrap{flex-wrap:wrap}
+    h2,h3,p{margin-top:0}.small{font-size:12px;color:var(--muted)}.muted{color:var(--muted)}
+    .today-tag{display:inline-block;padding:5px 9px;border-radius:999px;background:#ffedd5;color:#9a3412;font-size:12px;font-weight:700}
+    .day-title{font-size:22px;margin:12px 0 5px}.activity{font-size:15px;line-height:1.45}
+    .btn{border:0;border-radius:12px;padding:11px 14px;font-weight:750;background:#e5e7eb;color:#111827}
+    .btn.primary{background:linear-gradient(135deg,var(--brand),var(--brand2));color:white}
+    .btn.good{background:#dcfce7;color:#166534}.btn.danger{background:#fee2e2;color:#991b1b}.btn.dark{background:#111827;color:#fff}
+    .btn:disabled{opacity:.55;cursor:not-allowed}
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .stat{text-align:center;padding:12px 6px;background:#f8fafc;border-radius:14px}
+    .stat strong{display:block;font-size:21px}.stat span{font-size:11px;color:var(--muted)}
+    label{display:block;font-size:12px;font-weight:700;margin:11px 0 5px;color:#475467}
+    input,select,textarea{width:100%;border:1px solid #d0d5dd;border-radius:11px;padding:11px;background:#fff;color:#111827}
+    textarea{min-height:80px;resize:vertical}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .days{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+    .day{border:1px solid var(--line);background:#fff;border-radius:12px;padding:8px 3px;text-align:center;font-size:12px;min-height:55px}
+    .day strong{display:block}.day.done{background:#dcfce7;border-color:#86efac;color:#166534}.day.today{outline:2px solid #fb923c}.day.future{opacity:.45}
+    .leader-row{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #eee}
+    .leader-row:last-child{border-bottom:0}.rank{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#f3f4f6;font-weight:800}
+    .score{font-weight:800;color:#9a3412}.team-chip{font-size:11px;padding:3px 7px;border-radius:999px;background:#eef2ff;color:#3730a3}
+    .badge-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+    .badge{padding:10px;border-radius:12px;background:#f8fafc;border:1px solid var(--line);font-size:12px}.badge.locked{filter:grayscale(1);opacity:.45}
+    nav{position:fixed;bottom:0;left:0;right:0;z-index:20;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom)}
+    nav .inner{width:min(900px,100%);display:grid;grid-template-columns:repeat(5,1fr)}
+    .navbtn{border:0;background:transparent;padding:10px 2px 8px;font-size:11px;color:#667085}.navbtn span{display:block;font-size:20px}.navbtn.active{color:#c2410c;font-weight:800}
+    .view{display:none}.view.active{display:block}
+    .modal{position:fixed;inset:0;background:#0009;z-index:50;display:none;align-items:flex-end;justify-content:center}
+    .modal.show{display:flex}.sheet{background:#fff;width:min(900px,100%);max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;padding:18px}
+    pre{white-space:pre-wrap;font-size:11px;background:#0f172a;color:#e2e8f0;padding:12px;border-radius:12px;overflow:auto}
+    .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#111827;color:#fff;border-radius:999px;padding:10px 15px;font-size:13px;display:none;z-index:100}
+    .toast.show{display:block}
+    .empty{text-align:center;padding:25px 8px;color:#667085}
+    @media(max-width:520px){.grid2{grid-template-columns:1fr}.days{grid-template-columns:repeat(5,1fr)}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Maniacs Yoga Challenge</h1>
+    <div class="subtitle">30 days of mobility, balance, strength and community</div>
+    <div class="status"><span id="dbDot" class="dot"></span><span id="dbStatus">Local demo mode</span></div>
+  </header>
+
+  <main>
+    <section id="homeView" class="view active">
+      <div class="card hero">
+        <div class="row between"><span id="todayTag" class="today-tag">DAY 1</span><span id="todayTheme" class="small">Mobility Reset</span></div>
+        <div id="todayTitle" class="day-title"></div>
+        <div id="todayActivity" class="activity"></div>
+        <p id="todayBonus" class="small" style="margin-top:10px"></p>
+        <div class="row wrap">
+          <button id="completeBtn" class="btn primary" onclick="openCheckin()">Complete Today’s Challenge</button>
+          <button class="btn" onclick="switchView('calendar')">View 30 Days</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row between"><h3 style="margin:0">My Progress</h3><span id="memberGreeting" class="small">Choose your name</span></div>
+        <div class="stats" style="margin-top:13px">
+          <div class="stat"><strong id="myDays">0</strong><span>DAYS DONE</span></div>
+          <div class="stat"><strong id="myPoints">0</strong><span>POINTS</span></div>
+          <div class="stat"><strong id="myStreak">0</strong><span>STREAK</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Join the Challenge</h3>
+        <label>Your name</label>
+        <select id="memberSelect" onchange="chooseMember(this.value)"><option value="">Select member</option></select>
+        <button class="btn dark" style="width:100%;margin-top:10px" onclick="openJoin()">Add New Member</button>
+      </div>
+
+      <div class="card">
+        <h3>How points work</h3>
+        <p class="small">Yoga session: <b>2 points</b> · Photo or activity link: <b>1 point</b> · Encouragement note: <b>1 point</b> · Daily bonus: <b>1 point</b></p>
+      </div>
+    </section>
+
+    <section id="calendarView" class="view">
+      <div class="card">
+        <h2>30-Day Journey</h2>
+        <p class="small">Tap any available day to see its challenge.</p>
+        <div id="dayGrid" class="days"></div>
+      </div>
+      <div id="selectedDayCard" class="card"></div>
+    </section>
+
+    <section id="leaderboardView" class="view">
+      <div class="card">
+        <div class="row between"><h2 style="margin:0">Leaderboard</h2><button class="btn" onclick="loadData()">Refresh</button></div>
+        <div id="leaderboard"></div>
+      </div>
+      <div class="card">
+        <h3>Team Battle</h3>
+        <div id="teamBoard"></div>
+      </div>
+    </section>
+
+    <section id="badgesView" class="view">
+      <div class="card">
+        <h2>My Awards</h2>
+        <div id="badges" class="badge-grid"></div>
+      </div>
+      <div class="card">
+        <h3>Day 1 vs Day 30</h3>
+        <p class="small">Track your toe touch, deep squat and single-leg balance. Enter notes in your Day 1 and Day 30 check-ins to see your improvement.</p>
+      </div>
+    </section>
+
+    <section id="adminView" class="view">
+      <div class="card">
+        <h2>Setup & Admin</h2>
+        <label>Supabase project URL</label>
+        <input id="supabaseUrl" placeholder="https://xxxxx.supabase.co">
+        <label>Supabase publishable / anon key</label>
+        <textarea id="supabaseKey" placeholder="Paste your public browser key"></textarea>
+        <div class="row wrap" style="margin-top:10px">
+          <button class="btn primary" onclick="saveConnection()">Connect</button>
+          <button class="btn" onclick="showSql()">Database SQL</button>
+          <button class="btn danger" onclick="disconnectDb()">Disconnect</button>
+        </div>
+        <p class="small" style="margin-top:12px">Never place the Supabase service-role key in this HTML. Use only the browser-safe publishable or anon key and protect tables with Row Level Security.</p>
+      </div>
+      <div class="card">
+        <h3>Challenge Settings</h3>
+        <label>Challenge start date</label>
+        <input id="startDate" type="date">
+        <button class="btn dark" style="margin-top:10px;width:100%" onclick="saveStartDate()">Save Start Date</button>
+      </div>
+      <div class="card">
+        <h3>Club Activity Ideas Included</h3>
+        <p class="small">Runner mobility · pose of the day · yoga passport · team competition · unusual-location bonus · partner/family days · balance battles · before-and-after tests · live group sessions · surprise challenges · celebration awards.</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<nav><div class="inner">
+  <button class="navbtn active" data-view="home" onclick="switchView('home')"><span>🏠</span>Today</button>
+  <button class="navbtn" data-view="calendar" onclick="switchView('calendar')"><span>📅</span>30 Days</button>
+  <button class="navbtn" data-view="leaderboard" onclick="switchView('leaderboard')"><span>🏆</span>Leaders</button>
+  <button class="navbtn" data-view="badges" onclick="switchView('badges')"><span>🎖️</span>Awards</button>
+  <button class="navbtn" data-view="admin" onclick="switchView('admin')"><span>⚙️</span>Setup</button>
+</div></nav>
+
+<div id="joinModal" class="modal"><div class="sheet">
+  <div class="row between"><h2>Join the Challenge</h2><button class="btn" onclick="closeModal('joinModal')">✕</button></div>
+  <label>Name</label><input id="joinName" maxlength="60" placeholder="Runner name">
+  <label>Team</label>
+  <select id="joinTeam">
+    <option>Speed Demons</option><option>Hill Crushers</option><option>Long Run Legends</option><option>Boston Hunters</option>
+  </select>
+  <button class="btn primary" style="width:100%;margin-top:14px" onclick="addMember()">Join Challenge</button>
+</div></div>
+
+<div id="checkinModal" class="modal"><div class="sheet">
+  <div class="row between"><h2>Daily Check-in</h2><button class="btn" onclick="closeModal('checkinModal')">✕</button></div>
+  <div id="checkinHeading" class="today-tag"></div>
+  <label><input id="didYoga" type="checkbox" style="width:auto"> Completed yoga session (+2)</label>
+  <label>Photo, Strava or activity link (+1)</label><input id="proofUrl" placeholder="Optional URL">
+  <label>Encouragement or reflection (+1)</label><textarea id="checkinNote" placeholder="Encourage a teammate or share how you felt"></textarea>
+  <label><input id="didBonus" type="checkbox" style="width:auto"> Completed today’s surprise bonus (+1)</label>
+  <button class="btn primary" style="width:100%;margin-top:14px" onclick="saveCheckin()">Save Check-in</button>
+</div></div>
+
+<div id="sqlModal" class="modal"><div class="sheet">
+  <div class="row between"><h2>Supabase SQL Setup</h2><button class="btn" onclick="closeModal('sqlModal')">✕</button></div>
+  <p class="small">Run this once in Supabase → SQL Editor. These public challenge policies are convenient for a trusted club. For stronger protection, add Supabase Auth later.</p>
+  <pre id="sqlCode"></pre>
+  <button class="btn dark" style="width:100%" onclick="copySql()">Copy SQL</button>
+</div></div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const PLANS = [
+["Mobility Reset","Baseline & Breath","Take Day 1 toe-touch, deep-squat and single-leg-balance notes. Finish with 5 minutes of relaxed breathing.","Post your starting pose or flexibility photo."],
+["Mobility Reset","Runner’s Hip Flow","15 minutes: low lunge, half split, figure-four and gentle pigeon pose.","Wear your brightest running socks."],
+["Mobility Reset","Calf & Ankle Rescue","Downward dog, calf pedal, ankle circles and bent-knee calf stretch.","Do the session beside your running shoes."],
+["Mobility Reset","Pose of the Day: Warrior II","Warm up, then hold Warrior II for 3 × 30 seconds each side.","Share your strongest warrior face."],
+["Mobility Reset","Recovery Flow","Easy full-body flow after your run, ending with legs up the wall.","Give one teammate an encouraging message."],
+["Hip Power","Glute Activation Yoga","Chair pose, bridge, clamshell-style side lifts and locust pose.","Practice outdoors."],
+["Hip Power","Partner Yoga Day","Complete a 15-minute flow with a friend, spouse, child or teammate.","Take a partner photo."],
+["Hip Power","Pigeon Progression","Use figure-four, reclined pigeon and supported pigeon without forcing range.","Use a pillow or yoga block creatively."],
+["Hip Power","Runner’s Lunge Ladder","Low lunge, runner’s lunge, half split and twisting lunge.","Hold each final pose for 45 seconds."],
+["Hip Power","Sunset Yoga","Complete any 15-minute hip flow around sunset.","Share the view."],
+["Balance","Balance Battle: Tree Pose","Warm up and record your best controlled Tree Pose time on each leg.","Try 10 seconds with eyes closed near a safe support."],
+["Balance","Warrior III Control","Practice supported Warrior III, airplane arms and single-leg hinge.","Wear your Maniacs shirt."],
+["Balance","Core & Balance Flow","Bird dog, side plank, boat pose and slow mountain climbers.","Use your favorite running playlist."],
+["Balance","Yoga Passport Adventure","Complete yoga somewhere new: park, track, office, hotel or backyard.","Post the unusual location."],
+["Balance","Midpoint Recovery","Gentle flow, 5 minutes of breathing and a short gratitude note.","Thank someone who supports your running."],
+["Core Stability","Plank Ladder","Front plank, side plank and downward dog transitions for 15 minutes.","Invite a teammate to join remotely."],
+["Core Stability","Chair Pose Challenge","Accumulate 3 minutes in Chair Pose with breaks as needed.","Use a timer and report your longest hold."],
+["Core Stability","Twist & Stabilize","Dead bug, bird dog, low lunge twist and supine twist.","No phone for the final 5 minutes."],
+["Core Stability","Post-Speed Recovery","Calves, hips and hamstrings after a hard running session.","Tag your workout partner."],
+["Core Stability","Family Yoga Weekend","Complete a fun flow with family, friends or a pet nearby.","Most creative group picture earns bragging rights."],
+["Flexibility","Hamstring Care","Use strap-assisted hamstring stretch, half split and wide-leg fold.","Keep every stretch gentle—no bouncing."],
+["Flexibility","Shoulders for Runners","Chest opener, puppy pose, thread-the-needle and supported fish.","Practice better running posture afterward."],
+["Flexibility","Yoga Anywhere","Fit 15 minutes into your day wherever you are.","Airport, office or travel bonus."],
+["Flexibility","Pose of the Day: Dancer","Practice supported Dancer Pose after warming hips and quads.","Share a graceful—or funny—attempt."],
+["Flexibility","Long-Run Recovery","Legs up the wall, reclined figure-four, twist and breathing.","Enjoy a recovery drink afterward."],
+["Recovery","Slow Flow & Box Breathing","Move slowly for 10 minutes, then breathe 4-4-4-4 for 5 minutes.","Write one thing your body did well this month."],
+["Recovery","Mobility Bingo Day","Choose four: hips, calves, shoulders, balance, core, breathing, outdoors, partner.","Complete all four squares."],
+["Recovery","Favorite Pose Remix","Build a 15-minute sequence from your favorite poses so far.","Teach one pose to another Maniac."],
+["Recovery","Final Balance Battle","Repeat Tree Pose and compare with Day 11.","Celebrate improvement, not just the winning time."],
+["Celebration","Finish-Line Yoga & Awards","Repeat Day 1 tests, complete a gentle group flow and celebrate consistency.","Group photo, coffee or breakfast, and Maniacs awards."]
+];
+
+const SQL = `create table if not exists public.yoga_participants (
+  id bigint generated by default as identity primary key,
+  name text not null unique,
+  team text not null default 'Long Run Legends',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.yoga_checkins (
+  id bigint generated by default as identity primary key,
+  participant_id bigint not null references public.yoga_participants(id) on delete cascade,
+  day_number integer not null check (day_number between 1 and 30),
+  did_yoga boolean not null default false,
+  proof_url text,
+  note text,
+  did_bonus boolean not null default false,
+  points integer not null default 0 check (points between 0 and 5),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(participant_id, day_number)
+);
+
+create table if not exists public.yoga_settings (
+  id integer primary key default 1 check (id = 1),
+  start_date date not null default current_date,
+  updated_at timestamptz not null default now()
+);
+
+insert into public.yoga_settings(id, start_date)
+values (1, current_date)
+on conflict (id) do nothing;
+
+alter table public.yoga_participants enable row level security;
+alter table public.yoga_checkins enable row level security;
+alter table public.yoga_settings enable row level security;
+
+grant select, insert, update on public.yoga_participants to anon;
+grant select, insert, update on public.yoga_checkins to anon;
+grant select, insert, update on public.yoga_settings to anon;
+grant usage, select on all sequences in schema public to anon;
+
+create policy "Public read participants" on public.yoga_participants for select to anon using (true);
+create policy "Public add participants" on public.yoga_participants for insert to anon with check (true);
+create policy "Public update participants" on public.yoga_participants for update to anon using (true) with check (true);
+
+create policy "Public read checkins" on public.yoga_checkins for select to anon using (true);
+create policy "Public add checkins" on public.yoga_checkins for insert to anon with check (true);
+create policy "Public update checkins" on public.yoga_checkins for update to anon using (true) with check (true);
+
+create policy "Public read settings" on public.yoga_settings for select to anon using (true);
+create policy "Public add settings" on public.yoga_settings for insert to anon with check (id = 1);
+create policy "Public update settings" on public.yoga_settings for update to anon using (id = 1) with check (id = 1);`;
+
+let db=null, participants=[], checkins=[], currentMemberId=localStorage.getItem("yoga_member_id")||"";
+let startDate=localStorage.getItem("yoga_start_date") || new Date().toISOString().slice(0,10);
+let selectedDay=1;
+
+function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2200)}
+function openJoin(){document.getElementById("joinModal").classList.add("show")}
+function closeModal(id){document.getElementById(id).classList.remove("show")}
+function daysSinceStart(){const a=new Date(startDate+"T00:00:00"),b=new Date();return Math.floor((new Date(b.getFullYear(),b.getMonth(),b.getDate())-a)/86400000)+1}
+function challengeDay(){return Math.max(1,Math.min(30,daysSinceStart()))}
+function currentMember(){return participants.find(p=>String(p.id)===String(currentMemberId))}
+function memberCheckins(){return checkins.filter(c=>String(c.participant_id)===String(currentMemberId))}
+function calcStreak(rows){
+  const done=new Set(rows.filter(x=>x.did_yoga).map(x=>+x.day_number)); let streak=0;
+  for(let d=Math.min(challengeDay(),30);d>=1;d--){if(done.has(d))streak++;else break} return streak;
+}
+
+async function init(){
+  document.getElementById("sqlCode").textContent=SQL;
+  document.getElementById("startDate").value=startDate;
+  document.getElementById("supabaseUrl").value=localStorage.getItem("yoga_supabase_url")||"";
+  document.getElementById("supabaseKey").value=localStorage.getItem("yoga_supabase_key")||"";
+  connectFromStorage();
+  await loadData();
+}
+function connectFromStorage(){
+  const url=localStorage.getItem("yoga_supabase_url"),key=localStorage.getItem("yoga_supabase_key");
+  if(url&&key&&window.supabase){try{db=window.supabase.createClient(url,key);setDbStatus(true)}catch(e){db=null;setDbStatus(false)}} else setDbStatus(false)
+}
+function setDbStatus(on){
+  document.getElementById("dbDot").classList.toggle("online",on);
+  document.getElementById("dbStatus").textContent=on?"Supabase connected":"Local demo mode";
+}
+async function saveConnection(){
+  const url=document.getElementById("supabaseUrl").value.trim(),key=document.getElementById("supabaseKey").value.trim();
+  if(!url||!key)return toast("Enter both Supabase values");
+  localStorage.setItem("yoga_supabase_url",url);localStorage.setItem("yoga_supabase_key",key);
+  connectFromStorage();
+  try{await loadData(true);toast("Supabase connected")}catch(e){toast("Connection failed: "+e.message)}
+}
+function disconnectDb(){localStorage.removeItem("yoga_supabase_url");localStorage.removeItem("yoga_supabase_key");db=null;setDbStatus(false);loadData();toast("Using local demo mode")}
+function localRead(k,fallback){try{return JSON.parse(localStorage.getItem(k))||fallback}catch{return fallback}}
+function localWrite(k,v){localStorage.setItem(k,JSON.stringify(v))}
+async function loadData(showErrors=false){
+  try{
+    if(db){
+      const [p,c,s]=await Promise.all([
+        db.from("yoga_participants").select("*").order("name"),
+        db.from("yoga_checkins").select("*"),
+        db.from("yoga_settings").select("*").eq("id",1).maybeSingle()
+      ]);
+      if(p.error)throw p.error;if(c.error)throw c.error;
+      participants=p.data||[];checkins=c.data||[];
+      if(s.data?.start_date){startDate=s.data.start_date;localStorage.setItem("yoga_start_date",startDate);document.getElementById("startDate").value=startDate}
+    }else{
+      participants=localRead("yoga_participants",[]);
+      checkins=localRead("yoga_checkins",[]);
+    }
+    renderAll();
+  }catch(e){if(showErrors)throw e;toast("Database not ready. Run the setup SQL.");participants=localRead("yoga_participants",[]);checkins=localRead("yoga_checkins",[]);renderAll()}
+}
+async function addMember(){
+  const name=document.getElementById("joinName").value.trim(),team=document.getElementById("joinTeam").value;
+  if(!name)return toast("Enter a name");
+  try{
+    let added;
+    if(db){const r=await db.from("yoga_participants").insert({name,team}).select().single();if(r.error)throw r.error;added=r.data}
+    else{added={id:Date.now(),name,team,created_at:new Date().toISOString()};participants.push(added);localWrite("yoga_participants",participants)}
+    currentMemberId=String(added.id);localStorage.setItem("yoga_member_id",currentMemberId);
+    closeModal("joinModal");document.getElementById("joinName").value="";await loadData();toast("Welcome, "+name+"!");
+  }catch(e){toast(e.message.includes("duplicate")?"That member already exists":e.message)}
+}
+function chooseMember(id){currentMemberId=id;localStorage.setItem("yoga_member_id",id);renderAll()}
+function openCheckin(day=challengeDay()){
+  if(!currentMember())return openJoin();
+  selectedDay=day;
+  const existing=memberCheckins().find(x=>+x.day_number===day);
+  document.getElementById("checkinHeading").textContent="DAY "+day+" · "+PLANS[day-1][1];
+  document.getElementById("didYoga").checked=!!existing?.did_yoga;
+  document.getElementById("proofUrl").value=existing?.proof_url||"";
+  document.getElementById("checkinNote").value=existing?.note||"";
+  document.getElementById("didBonus").checked=!!existing?.did_bonus;
+  document.getElementById("checkinModal").classList.add("show");
+}
+async function saveCheckin(){
+  if(!currentMember())return toast("Choose a member first");
+  const did_yoga=document.getElementById("didYoga").checked,proof_url=document.getElementById("proofUrl").value.trim(),note=document.getElementById("checkinNote").value.trim(),did_bonus=document.getElementById("didBonus").checked;
+  const points=(did_yoga?2:0)+(proof_url?1:0)+(note?1:0)+(did_bonus?1:0);
+  const row={participant_id:+currentMemberId,day_number:selectedDay,did_yoga,proof_url:proof_url||null,note:note||null,did_bonus,points,updated_at:new Date().toISOString()};
+  try{
+    if(db){const r=await db.from("yoga_checkins").upsert(row,{onConflict:"participant_id,day_number"});if(r.error)throw r.error}
+    else{
+      const i=checkins.findIndex(x=>String(x.participant_id)===String(currentMemberId)&&+x.day_number===selectedDay);
+      if(i>=0)checkins[i]={...checkins[i],...row};else checkins.push({...row,id:Date.now(),created_at:new Date().toISOString()});
+      localWrite("yoga_checkins",checkins);
+    }
+    closeModal("checkinModal");await loadData();toast("Check-in saved: "+points+" points");
+  }catch(e){toast(e.message)}
+}
+async function saveStartDate(){
+  const value=document.getElementById("startDate").value;if(!value)return;
+  startDate=value;localStorage.setItem("yoga_start_date",value);
+  try{if(db){const r=await db.from("yoga_settings").upsert({id:1,start_date:value,updated_at:new Date().toISOString()});if(r.error)throw r.error}renderAll();toast("Start date saved")}catch(e){toast(e.message)}
+}
+function renderAll(){renderToday();renderMembers();renderCalendar();renderLeaderboard();renderBadges()}
+function renderToday(){
+  const d=challengeDay(),p=PLANS[d-1];
+  document.getElementById("todayTag").textContent="DAY "+d+" OF 30";
+  document.getElementById("todayTheme").textContent=p[0];
+  document.getElementById("todayTitle").textContent=p[1];
+  document.getElementById("todayActivity").textContent=p[2];
+  document.getElementById("todayBonus").innerHTML="<b>Bonus:</b> "+esc(p[3]);
+  const rows=memberCheckins(),done=rows.find(x=>+x.day_number===d&&x.did_yoga);
+  document.getElementById("completeBtn").textContent=done?"Update Today’s Check-in":"Complete Today’s Challenge";
+  const points=rows.reduce((a,b)=>a+(+b.points||0),0);
+  document.getElementById("myDays").textContent=rows.filter(x=>x.did_yoga).length;
+  document.getElementById("myPoints").textContent=points;
+  document.getElementById("myStreak").textContent=calcStreak(rows);
+  document.getElementById("memberGreeting").textContent=currentMember()?"Hi, "+currentMember().name:"Choose your name";
+}
+function renderMembers(){
+  const sel=document.getElementById("memberSelect");
+  sel.innerHTML='<option value="">Select member</option>'+participants.map(p=>`<option value="${p.id}" ${String(p.id)===String(currentMemberId)?"selected":""}>${esc(p.name)} · ${esc(p.team)}</option>`).join("");
+}
+function renderCalendar(){
+  const today=challengeDay(),done=new Set(memberCheckins().filter(x=>x.did_yoga).map(x=>+x.day_number));
+  document.getElementById("dayGrid").innerHTML=PLANS.map((p,i)=>{const d=i+1;return `<button class="day ${done.has(d)?"done":""} ${d===today?"today":""} ${d>today?"future":""}" onclick="selectDay(${d})"><strong>${done.has(d)?"✓":"Day "+d}</strong>${esc(p[0].split(" ")[0])}</button>`}).join("");
+  selectDay(selectedDay||today,false);
+}
+function selectDay(d,scroll=true){
+  selectedDay=d;const p=PLANS[d-1],available=d<=challengeDay();
+  document.getElementById("selectedDayCard").innerHTML=`<span class="today-tag">DAY ${d}</span><h2 style="margin:10px 0 5px">${esc(p[1])}</h2><p>${esc(p[2])}</p><p class="small"><b>Bonus:</b> ${esc(p[3])}</p><button class="btn primary" ${available?"":"disabled"} onclick="openCheckin(${d})">${available?"Check in for Day "+d:"Available on Day "+d}</button>`;
+  if(scroll)document.getElementById("selectedDayCard").scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function renderLeaderboard(){
+  const rows=participants.map(p=>{const cs=checkins.filter(c=>String(c.participant_id)===String(p.id));return {...p,points:cs.reduce((a,b)=>a+(+b.points||0),0),days:cs.filter(x=>x.did_yoga).length}}).sort((a,b)=>b.points-a.points||b.days-a.days||a.name.localeCompare(b.name));
+  document.getElementById("leaderboard").innerHTML=rows.length?rows.map((p,i)=>`<div class="leader-row"><div class="rank">${i+1}</div><div><b>${esc(p.name)}</b><br><span class="team-chip">${esc(p.team)}</span> <span class="small">${p.days} days</span></div><div class="score">${p.points} pts</div></div>`).join(""):'<div class="empty">No participants yet.</div>';
+  const teams={};rows.forEach(p=>{teams[p.team]=(teams[p.team]||0)+p.points});
+  const ts=Object.entries(teams).sort((a,b)=>b[1]-a[1]);
+  document.getElementById("teamBoard").innerHTML=ts.length?ts.map(([t,s],i)=>`<div class="leader-row"><div class="rank">${i+1}</div><div><b>${esc(t)}</b></div><div class="score">${s} pts</div></div>`).join(""):'<div class="empty">Teams appear after members join.</div>';
+}
+function renderBadges(){
+  const rows=memberCheckins(),days=rows.filter(x=>x.did_yoga).length,points=rows.reduce((a,b)=>a+(+b.points||0),0),streak=calcStreak(rows),proofs=rows.filter(x=>x.proof_url).length,notes=rows.filter(x=>x.note).length;
+  const b=[
+    ["🌱","Yoga Rookie","Complete 1 day",days>=1],["🔥","Consistency Crew","Build a 7-day streak",streak>=7],
+    ["📸","Creative Location","Share 3 activity links",proofs>=3],["🤝","Community Spirit","Write 5 encouragement notes",notes>=5],
+    ["💯","Century Club","Earn 100 points",points>=100],["🏁","30-Day Finisher","Complete all 30 days",days>=30]
+  ];
+  document.getElementById("badges").innerHTML=b.map(x=>`<div class="badge ${x[3]?"":"locked"}"><div style="font-size:25px">${x[0]}</div><b>${x[1]}</b><br><span class="small">${x[2]}</span></div>`).join("");
+}
+function switchView(name){
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.getElementById(name+"View").classList.add("active");
+  document.querySelectorAll(".navbtn").forEach(b=>b.classList.toggle("active",b.dataset.view===name));
+  window.scrollTo({top:0,behavior:"smooth"});if(name==="leaderboard")loadData();
+}
+function showSql(){document.getElementById("sqlModal").classList.add("show")}
+async function copySql(){try{await navigator.clipboard.writeText(SQL);toast("SQL copied")}catch{toast("Select and copy the SQL manually")}}
+init();
+</script>
+</body>
+</html>
