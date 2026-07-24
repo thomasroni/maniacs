@@ -557,8 +557,7 @@ function parseImportSheet(sheetName){
  const matrix=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true,blankrows:false});
  if(!matrix.length)return {sheetName,error:'No data'};
  const headerIndex=detectImportHeader(matrix),headers=makeUniqueHeaders(matrix[headerIndex]);
- const rows=matrix.slice(headerIndex+1).map(arr=>Object.fromEntries(headers.map((h,i)=>[h,arr?.[i]??''])));
- const nameCol=pickColumn(headers,[/^name$/,/participant/,/member/,/person/])||headers[0];
+ const nameCol=pickColumn(headers,[/^name$/,/participant/,/member/,/person/])||headers[1]||headers[0];
  const startWeightCol=pickColumn(headers,[/initial.*weight/,/start.*weight/,/starting.*weight/,/^initial$/,/^start$/]);
  const finalWeightCol=pickColumn(headers,[/final.*weight/,/end.*weight/,/ending.*weight/,/current.*weight/,/^final$/,/^ending$/]);
  const paidCol=pickColumn(headers,[/^paid$/,/payment/,/fee paid/]);
@@ -566,16 +565,42 @@ function parseImportSheet(sheetName){
  const endDateCol=pickColumn(headers,[/end.*date/,/final.*date/,/close.*date/]);
  const compCol=pickColumn(headers,[/competition/,/challenge/,/^blc$/,/period name/]);
  if(!startWeightCol)return {sheetName,error:'Starting-weight column not found'};
- const parsed=rows.map((r,i)=>({row:headerIndex+i+2,name:String(r[nameCol]||'').trim(),initial_weight:parseWeight(r[startWeightCol]),final_weight:finalWeightCol?parseWeight(r[finalWeightCol]):null,paid:paidCol?parseBool(r[paidCol],true):true,start_date:startDateCol?excelDateToISO(r[startDateCol]):'',end_date:endDateCol?excelDateToISO(r[endDateCol]):'',competition:compCol?String(r[compCol]||'').trim():''})).filter(r=>r.name&&r.initial_weight!=null&&r.initial_weight>0);
+
+ // A worksheet can contain a second Body Composition table below the weight
+ // table. Import only the first weight table and stop when a summary, winner,
+ // or body-composition header begins. Otherwise visceral-fat values can be
+ // mistaken for body weights.
+ const dataRows=[];
+ let consecutiveBlank=0;
+ for(let i=headerIndex+1;i<matrix.length;i++){
+  const arr=Array.isArray(matrix[i])?matrix[i]:[];
+  const normalized=arr.map(normalizeHeader);
+  const joined=normalized.filter(Boolean).join(' ');
+  const rowName=String(arr[headers.indexOf(nameCol)]??'').trim();
+  const rowNameNorm=normalizeHeader(rowName);
+  const looksLikeBodyHeader=/visceral|body fat|percent fat|muscle|body composition/.test(joined)&&/(initial|final)/.test(joined);
+  const looksLikeSummary=/^(total loss|total loss percent|winner|runner up|runner-up|second runner up|prize|ranking|rank)$/i.test(rowNameNorm)||/^total\b/.test(rowNameNorm);
+  const isBlank=!arr.some(v=>String(v??'').trim()!=='');
+  if(isBlank){consecutiveBlank++;if(consecutiveBlank>=2)break;continue}
+  consecutiveBlank=0;
+  if(looksLikeBodyHeader||looksLikeSummary)break;
+  dataRows.push({arr,rowNumber:i+1});
+ }
+
+ const parsed=dataRows.map(({arr,rowNumber})=>{
+  const r=Object.fromEntries(headers.map((h,i)=>[h,arr?.[i]??'']));
+  return {row:rowNumber,name:String(r[nameCol]||'').trim(),initial_weight:parseWeight(r[startWeightCol]),final_weight:finalWeightCol?parseWeight(r[finalWeightCol]):null,paid:paidCol?parseBool(r[paidCol],true):true,start_date:startDateCol?excelDateToISO(r[startDateCol]):'',end_date:endDateCol?excelDateToISO(r[endDateCol]):'',competition:compCol?String(r[compCol]||'').trim():''};
+ }).filter(r=>r.name&&r.initial_weight!=null&&r.initial_weight>=50&&r.initial_weight<=800);
+
  const dedup=[],seen=new Set();
  for(const r of parsed){const key=r.name.toLowerCase().replace(/\s+/g,' ');if(seen.has(key))continue;seen.add(key);dedup.push(r)}
- if(!dedup.length)return {sheetName,error:'No valid participant rows'};
+ if(!dedup.length)return {sheetName,error:'No valid participant rows in the weight table'};
  const metadata=matrix.slice(0,headerIndex).flat().map(x=>String(x||'').trim()).filter(Boolean);
  const inferred=inferDatesFromText([sheetName,metadata.join(' '),importFileBaseName].join(' '));
  const first=dedup[0]||{};
  const metadataCompetition=metadata.find(x=>/blc|biggest loser|challenge|competition/i.test(x));
  const automaticName=first.competition||metadataCompetition||sheetName||importFileBaseName||'Imported Competition';
- return {sheetName,rows:dedup,name:automaticName,start:first.start_date||inferred.start,end:first.end_date||inferred.end,invalid:Math.max(0,rows.length-dedup.length)};
+ return {sheetName,rows:dedup,name:automaticName,start:first.start_date||inferred.start,end:first.end_date||inferred.end,invalid:Math.max(0,dataRows.length-dedup.length),bodyCompositionIgnored:true};
 }
 async function readImportFile(file){
  if(!file)return;
