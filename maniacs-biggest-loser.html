@@ -502,6 +502,37 @@ function openClone(){if(!currentCompetition())return alert('Create the destinati
 function exportCSV(){const c=currentCompetition(),ps=currentPeople();if(!c)return;const paid=ps.filter(p=>p.paid).length,pool=paid*Number(c.entry_fee||0),splits=[Number(c.first_place_percent||0),Number(c.second_place_percent||0),Number(c.third_place_percent||0)];const lines=[['Rank','Name','Start Weight','Current/Final Weight','Loss','Percent Loss','Payout','Paid'],...ps.map((p,i)=>[p.pct==null?'':i+1,p.name,p.starting_weight??'',p.current_weight??'',p.loss??'',p.pct??'',i<3&&p.pct!=null?(pool*splits[i]/100).toFixed(2):'',p.paid?'Yes':'No'])];const csv=lines.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=(c.name||'BLC')+'-leaderboard.csv';a.click();URL.revokeObjectURL(a.href)}
 
 function normalizeHeader(v){return String(v??'').trim().toLowerCase().replace(/[%#]/g,' percent ').replace(/[^a-z0-9]+/g,' ').trim()}
+function makeUniqueHeaders(row){
+ const used=new Map();
+ return (row||[]).map((value,index)=>{
+  let base=String(value??'').trim()||`Column ${index+1}`;
+  const key=base.toLowerCase();
+  const count=(used.get(key)||0)+1;used.set(key,count);
+  return count===1?base:`${base} ${count}`;
+ });
+}
+function detectImportHeader(matrix){
+ if(!Array.isArray(matrix)||!matrix.length)return 0;
+ let bestIndex=0,bestScore=-Infinity;
+ const maxRows=Math.min(matrix.length,30);
+ for(let i=0;i<maxRows;i++){
+  const row=Array.isArray(matrix[i])?matrix[i]:[];
+  const cells=row.map(normalizeHeader).filter(Boolean);
+  if(!cells.length)continue;
+  let score=0;
+  if(cells.some(x=>/^(name|participant|member|person)$/.test(x)||x.includes('participant name')||x.includes('member name')))score+=12;
+  if(cells.some(x=>/(initial|start|starting).*(weight)|(weight).*(initial|start|starting)/.test(x)))score+=10;
+  if(cells.some(x=>/(final|end|ending|current).*(weight)|(weight).*(final|end|ending|current)/.test(x)))score+=8;
+  if(cells.some(x=>/^paid$|payment|fee paid/.test(x)))score+=3;
+  if(cells.some(x=>/start date|begin date/.test(x)))score+=2;
+  if(cells.some(x=>/end date|final date|close date/.test(x)))score+=2;
+  score+=Math.min(cells.length,8)*0.2;
+  const next=Array.isArray(matrix[i+1])?matrix[i+1]:[];
+  if(next.some(v=>parseWeight(v)!=null))score+=2;
+  if(score>bestScore){bestScore=score;bestIndex=i;}
+ }
+ return bestIndex;
+}
 function parseBool(v,defaultValue=true){if(v===true||v===false)return v;const t=String(v??'').trim().toLowerCase();if(!t)return defaultValue;return !['no','n','false','0','unpaid'].includes(t)}
 function parseWeight(v){if(v==null||v==='')return null;const n=Number(String(v).replace(/[^0-9.-]/g,''));return Number.isFinite(n)&&n>0?n:null}
 function excelDateToISO(v){if(!v)return'';if(v instanceof Date&&!isNaN(v))return v.toISOString().slice(0,10);if(typeof v==='number'&&window.XLSX){const d=XLSX.SSF.parse_date_code(v);if(d)return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;}const t=String(v).trim();const direct=t.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);if(direct)return `${direct[1]}-${direct[2].padStart(2,'0')}-${direct[3].padStart(2,'0')}`;const d=new Date(t);return isNaN(d)?'':d.toISOString().slice(0,10)}
