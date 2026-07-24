@@ -144,7 +144,8 @@
           </div>
           <span class="today-tag">CONNECTED</span>
         </div>
-        <p class="small" style="margin-top:12px">Yoga data is stored separately under the <b>yoga-challenge</b> record and will not change the football pool.</p>
+        <p class="small" style="margin-top:12px">Yoga uses its own <b>yoga_challenge_state</b> table. It does not read or write the football table.</p>
+        <button class="btn primary" style="width:100%;margin-top:10px" onclick="showSql()">Show One-Time Database SQL</button>
       </div>
       <div class="card">
         <h3>Challenge Settings</h3>
@@ -189,6 +190,13 @@
 </div></div>
 
 
+<div id="sqlModal" class="modal"><div class="sheet">
+  <div class="row between"><h2>Create Yoga Table</h2><button class="btn" onclick="closeModal('sqlModal')">✕</button></div>
+  <p class="small">Run this once in Supabase → SQL Editor. It creates a completely separate yoga table and browser-safe access policies.</p>
+  <pre id="sqlCode"></pre>
+  <button class="btn dark" style="width:100%" onclick="copySql()">Copy SQL</button>
+</div></div>
+
 <div id="toast" class="toast"></div>
 
 <script>
@@ -229,8 +237,42 @@ const PLANS = [
 
 const SUPABASE_URL="https://pfwkauorjzzcnuvwujxj.supabase.co";
 const SUPABASE_KEY="sb_publishable_1gUsJnbBzdphciR-WcYy7w_1Vn-n-X1";
-const ROW_ID="yoga-challenge";
-const LOCAL_KEY="maniacsYogaChallengeV1";
+const TABLE_NAME="yoga_challenge_state";
+const ROW_ID="main";
+const LOCAL_KEY="maniacsYogaChallengeV2";
+const SQL=`create table if not exists public.yoga_challenge_state (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.yoga_challenge_state enable row level security;
+
+grant select, insert, update on public.yoga_challenge_state to anon;
+
+drop policy if exists "Yoga public read" on public.yoga_challenge_state;
+drop policy if exists "Yoga public insert" on public.yoga_challenge_state;
+drop policy if exists "Yoga public update" on public.yoga_challenge_state;
+
+create policy "Yoga public read"
+on public.yoga_challenge_state for select to anon
+using (true);
+
+create policy "Yoga public insert"
+on public.yoga_challenge_state for insert to anon
+with check (id = 'main');
+
+create policy "Yoga public update"
+on public.yoga_challenge_state for update to anon
+using (id = 'main') with check (id = 'main');
+
+insert into public.yoga_challenge_state (id, data)
+values ('main', jsonb_build_object(
+  'participants', '[]'::jsonb,
+  'checkins', '[]'::jsonb,
+  'startDate', current_date::text
+))
+on conflict (id) do nothing;`;
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 let state={participants:[],checkins:[],startDate:new Date().toISOString().slice(0,10)};
@@ -268,34 +310,30 @@ function setDbStatus(kind,message){
 }
 async function init(){
   document.getElementById("startDate").value=startDate;
+  document.getElementById("sqlCode").textContent=SQL;
   await loadData();
 }
 async function loadData(){
-  setDbStatus("syncing","Connecting to shared database…");
+  setDbStatus("syncing","Connecting to yoga database…");
   try{
-    const {data,error}=await db.from("maniacs_pool_state").select("data").eq("id",ROW_ID).maybeSingle();
+    const {data,error}=await db.from(TABLE_NAME).select("data").eq("id",ROW_ID).maybeSingle();
     if(error)throw error;
     if(data?.data){
       state=data.data;
     }else{
-      try{state=JSON.parse(localStorage.getItem(LOCAL_KEY))||state}catch{}
-      normalizeState();
-      const created=await db.from("maniacs_pool_state").upsert(
-        {id:ROW_ID,data:state,updated_at:new Date().toISOString()},{onConflict:"id"}
-      );
-      if(created.error)throw created.error;
+      throw new Error("The yoga table or main row does not exist. Run the setup SQL.");
     }
     normalizeState();
     document.getElementById("startDate").value=startDate;
     renderAll();
-    setDbStatus("online","Shared yoga data synchronized");
+    setDbStatus("online","Yoga database synchronized");
     subscribe();
   }catch(e){
     console.error(e);
     try{state=JSON.parse(localStorage.getItem(LOCAL_KEY))||state}catch{}
     normalizeState();renderAll();
     setDbStatus("offline","Offline copy — database unavailable");
-    toast("Could not connect to the shared database.");
+    toast("Could not connect. Run the one-time yoga table SQL in Setup.");
   }
 }
 async function saveState(){
@@ -304,23 +342,23 @@ async function saveState(){
   normalizeState();
   renderAll();
   setDbStatus("syncing","Saving changes…");
-  const {error}=await db.from("maniacs_pool_state").upsert(
+  const saved=await db.from(TABLE_NAME).upsert(
     {id:ROW_ID,data:state,updated_at:new Date().toISOString()},{onConflict:"id"}
   );
   saving=false;
-  if(error){
-    console.error(error);
+  if(saved.error){
+    console.error(saved.error);
     setDbStatus("offline","Save failed — local copy retained");
-    toast("Could not save to Supabase.");
+    toast("Could not save to the yoga table.");
   }else{
     setDbStatus("online","All yoga data saved");
   }
 }
 function subscribe(){
   if(channel)return;
-  channel=db.channel("maniacs-yoga-challenge-v1")
+  channel=db.channel("maniacs-yoga-challenge-v2")
     .on("postgres_changes",
-      {event:"*",schema:"public",table:"maniacs_pool_state",filter:"id=eq."+ROW_ID},
+      {event:"*",schema:"public",table:TABLE_NAME,filter:"id=eq."+ROW_ID},
       payload=>{
         if(payload.new?.data&&!saving){
           state=payload.new.data;
@@ -431,6 +469,12 @@ function renderBadges(){
   ];
   document.getElementById("badges").innerHTML=b.map(x=>`<div class="badge ${x[3]?"":"locked"}"><div style="font-size:25px">${x[0]}</div><b>${x[1]}</b><br><span class="small">${x[2]}</span></div>`).join("");
 }
+function showSql(){document.getElementById("sqlModal").classList.add("show")}
+async function copySql(){
+  try{await navigator.clipboard.writeText(SQL);toast("SQL copied")}
+  catch(e){toast("Select and copy the SQL manually")}
+}
+
 function switchView(name){
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.getElementById(name+"View").classList.add("active");
   document.querySelectorAll(".navbtn").forEach(b=>b.classList.toggle("active",b.dataset.view===name));
