@@ -123,16 +123,11 @@
 <div id="weighinModal" class="modal hidden"><div class="modalbox"><h2>Record Weigh-in</h2><div class="formgrid"><label><span>Participant</span><select id="wParticipant"></select></label><label><span>Date</span><input id="wDate" type="date"></label><label><span>Weight (lb)</span><input id="wWeight" type="number" step="0.1"></label></div><div class="toolbar"><button onclick="saveWeighin()">Save</button><button class="light" onclick="closeModal('weighinModal')">Cancel</button></div></div></div>
 <div id="cloneModal" class="modal hidden"><div class="modalbox"><h2>Copy Participants</h2><p class="muted">Copies member names and paid status from another competition. Starting weights remain blank.</p><label><span>Copy from</span><select id="cloneSource"></select></label><div class="toolbar"><button onclick="cloneParticipants()">Copy</button><button class="light" onclick="closeModal('cloneModal')">Cancel</button></div></div></div>
 <div id="importModal" class="modal hidden"><div class="modalbox" style="max-width:980px">
-<h2>Import Competition Spreadsheet</h2>
-<p class="muted">Upload an Excel or CSV file. The importer recognizes common column names such as Name, Initial Weight, Final Weight, Paid, Start Date, End Date, and Competition.</p>
-<div class="import-drop" onclick="el('importFile').click()"><b>📁 Choose Excel or CSV file</b><br><span class="muted" id="importFileName">.xlsx, .xls or .csv</span><input id="importFile" class="hidden" type="file" accept=".xlsx,.xls,.csv" onchange="readImportFile(this.files[0])"></div>
-<div class="import-options">
-<label><span>Worksheet / competition</span><select id="importSheet" onchange="prepareImportPreview()"></select></label>
-<label><span>When matching dates already exist</span><select id="importMode"><option value="replace">Delete and replace matching competition</option><option value="skip">Skip existing competition</option></select></label>
-</div>
-<div class="import-meta"><label><span>Competition name</span><input id="importCompetitionName"></label><label><span>Start date</span><input id="importStartDate" type="date"></label><label><span>End date</span><input id="importEndDate" type="date"></label></div>
+<h2>Bulk Import Competition Spreadsheet</h2>
+<p class="muted">Choose one Excel workbook or CSV file. Every valid worksheet is imported automatically. Competitions with matching start and end dates are deleted and recreated.</p>
+<div class="import-drop" onclick="el('importFile').click()"><b>📁 Choose Excel or CSV file</b><br><span class="muted" id="importFileName">All worksheet tabs will be imported automatically</span><input id="importFile" class="hidden" type="file" accept=".xlsx,.xls,.csv" onchange="readImportFile(this.files[0])"></div>
 <div id="importMessage"></div><div id="importPreview" class="import-preview"></div><div id="importLog" class="import-log hidden"></div>
-<div class="toolbar" style="margin-top:14px"><button class="green" id="runImportBtn" onclick="runSpreadsheetImport()" disabled>Import / Replace</button><button class="light" onclick="closeModal('importModal')">Cancel</button></div>
+<div class="toolbar" style="margin-top:14px;position:sticky;bottom:0;background:#fff;padding-top:10px"><button class="light" onclick="closeModal('importModal')">Close</button></div>
 </div></div>
 
 <div id="foodModal" class="modal hidden"><div class="modalbox">
@@ -511,15 +506,88 @@ function parseBool(v,defaultValue=true){if(v===true||v===false)return v;const t=
 function parseWeight(v){if(v==null||v==='')return null;const n=Number(String(v).replace(/[^0-9.-]/g,''));return Number.isFinite(n)&&n>0?n:null}
 function excelDateToISO(v){if(!v)return'';if(v instanceof Date&&!isNaN(v))return v.toISOString().slice(0,10);if(typeof v==='number'&&window.XLSX){const d=XLSX.SSF.parse_date_code(v);if(d)return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;}const t=String(v).trim();const direct=t.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);if(direct)return `${direct[1]}-${direct[2].padStart(2,'0')}-${direct[3].padStart(2,'0')}`;const d=new Date(t);return isNaN(d)?'':d.toISOString().slice(0,10)}
 function pickColumn(headers,patterns){return headers.find(h=>patterns.some(p=>p.test(normalizeHeader(h))))}
-function inferDatesFromText(text){const s=String(text||'');const matches=[...s.matchAll(/(\d{1,2})[-_ \/]([A-Za-z]{3,9}|\d{1,2})[-_ \/]?(\d{2,4})/g)];const dates=matches.map(m=>excelDateToISO(`${m[1]} ${m[2]} ${m[3]}`)).filter(Boolean);return {start:dates[0]||'',end:dates[1]||''}}
-function openImportHistory(){importWorkbook=null;importPrepared=null;importFileBaseName='';el('importFile').value='';el('importFileName').textContent='.xlsx, .xls or .csv';el('importSheet').innerHTML='';el('importCompetitionName').value='';el('importStartDate').value='';el('importEndDate').value='';el('importPreview').innerHTML='';el('importMessage').innerHTML='';el('importLog').classList.add('hidden');el('runImportBtn').disabled=true;el('importModal').classList.remove('hidden')}
-async function readImportFile(file){if(!file)return;try{if(typeof XLSX==='undefined')throw new Error('Spreadsheet library did not load. Check your internet connection and reopen the page.');el('importFileName').textContent=file.name;importFileBaseName=String(file.name||'').replace(/\.(xlsx?|csv)$/i,'').trim();const data=await file.arrayBuffer();importWorkbook=XLSX.read(data,{type:'array',cellDates:true});el('importSheet').innerHTML=importWorkbook.SheetNames.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');prepareImportPreview()}catch(e){console.error(e);el('importMessage').innerHTML=`<div class="import-warning">${esc(e.message)}</div>`}}
-function normalizeHeader(v){return String(v??'').trim().toLowerCase().replace(/[_\-]+/g,' ').replace(/\s+/g,' ')}
-function detectImportHeader(matrix){const namePatterns=[/^name$/,/participant/,/member/,/person/];let best=null;for(let i=0;i<Math.min(matrix.length,30);i++){const row=(matrix[i]||[]).map(normalizeHeader);let score=0;if(row.some(h=>namePatterns.some(r=>r.test(h))))score+=5;if(row.some(h=>/initial.*weight|start.*weight|starting.*weight|^initial$|^start$/.test(h)))score+=4;if(row.some(h=>/final.*weight|end.*weight|ending.*weight|current.*weight|^final$|^ending$/.test(h)))score+=2;if(row.some(h=>/^paid$|payment|fee paid/.test(h)))score+=1;if(!best||score>best.score)best={index:i,score};}return best&&best.score>=5?best.index:0}
-function makeUniqueHeaders(row){const used={};return (row||[]).map((v,i)=>{let h=String(v??'').trim()||`Column ${i+1}`;const key=h.toLowerCase();used[key]=(used[key]||0)+1;return used[key]>1?`${h} ${used[key]}`:h})}
-function prepareImportPreview(){if(!importWorkbook)return;const sheetName=el('importSheet').value,ws=importWorkbook.Sheets[sheetName];const matrix=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true,blankrows:false});if(!matrix.length){el('importMessage').innerHTML='<div class="import-warning">The selected worksheet has no data.</div>';el('runImportBtn').disabled=true;return}const headerIndex=detectImportHeader(matrix),headers=makeUniqueHeaders(matrix[headerIndex]);const rows=matrix.slice(headerIndex+1).map(arr=>Object.fromEntries(headers.map((h,i)=>[h,arr?.[i]??''])));const nameCol=pickColumn(headers,[/^name$/,/participant/,/member/,/person/])||headers[0];const startWeightCol=pickColumn(headers,[/initial.*weight/,/start.*weight/,/starting.*weight/,/^initial$/,/^start$/]);const finalWeightCol=pickColumn(headers,[/final.*weight/,/end.*weight/,/ending.*weight/,/current.*weight/,/^final$/,/^ending$/]);const paidCol=pickColumn(headers,[/^paid$/,/payment/,/fee paid/]);const startDateCol=pickColumn(headers,[/start.*date/,/begin.*date/]);const endDateCol=pickColumn(headers,[/end.*date/,/final.*date/,/close.*date/]);const compCol=pickColumn(headers,[/competition/,/challenge/,/^blc$/,/period name/]);if(!startWeightCol){el('importMessage').innerHTML=`<div class="import-warning"><b>Starting-weight column not found.</b> Participant names will be read automatically from <b>${esc(nameCol)}</b>, but the sheet must contain an Initial or Starting Weight column.<br>Detected headers: ${headers.map(esc).join(', ')}</div>`;el('runImportBtn').disabled=true;return}const parsed=rows.map((r,i)=>({row:headerIndex+i+2,name:String(r[nameCol]||'').trim(),initial_weight:parseWeight(r[startWeightCol]),final_weight:finalWeightCol?parseWeight(r[finalWeightCol]):null,paid:paidCol?parseBool(r[paidCol],true):true,start_date:startDateCol?excelDateToISO(r[startDateCol]):'',end_date:endDateCol?excelDateToISO(r[endDateCol]):'',competition:compCol?String(r[compCol]||'').trim():''})).filter(r=>r.name&&r.initial_weight!=null&&r.initial_weight>0);const dedup=[];const seen=new Set();for(const r of parsed){const key=r.name.toLowerCase().replace(/\s+/g,' ');if(seen.has(key))continue;seen.add(key);dedup.push(r)}const metadata=matrix.slice(0,headerIndex).flat().map(x=>String(x||'').trim()).filter(Boolean);const inferred=inferDatesFromText([sheetName,importFileBaseName,metadata.join(' ')].join(' '));const first=dedup[0]||{};const metadataCompetition=metadata.find(x=>/blc|biggest loser|challenge|competition/i.test(x));const automaticName=first.competition||metadataCompetition||sheetName||importFileBaseName||'Imported Competition';el('importCompetitionName').value=automaticName;el('importStartDate').value=first.start_date||inferred.start;el('importEndDate').value=first.end_date||inferred.end;importPrepared={sheetName,rows:dedup,columns:{nameCol,startWeightCol,finalWeightCol,paidCol,startDateCol,endDateCol,compCol},automaticName};const invalid=Math.max(0,rows.length-dedup.length);el('importMessage').innerHTML=`<div class="import-ok"><b>${dedup.length} participant names and weights were read automatically.</b>${invalid?` ${invalid} blank, duplicate, or invalid row(s) will be ignored.`:''}<br><span class="muted">Name column: ${esc(nameCol)} · Header row: ${headerIndex+1}</span></div>`;el('importPreview').innerHTML=`<table><thead><tr><th>Name</th><th>Initial</th><th>Final</th><th>Paid</th></tr></thead><tbody>${dedup.slice(0,100).map(r=>`<tr><td>${esc(r.name)}</td><td>${r.initial_weight??'—'}</td><td>${r.final_weight??'—'}</td><td>${r.paid?'Yes':'No'}</td></tr>`).join('')}</tbody></table>${dedup.length>100?'<div class="muted" style="padding:10px">Preview shows first 100 rows.</div>':''}`;el('runImportBtn').disabled=!dedup.length}
-async function deleteCompetitionTree(comp){const ids=participants.filter(p=>p.competition_id===comp.id).map(p=>p.id);if(ids.length){if(foodLogAvailable){const fr=await sb.from('blc_food_logs').delete().in('participant_id',ids);if(fr.error)throw fr.error}const wr=await sb.from('blc_weighins').delete().in('participant_id',ids);if(wr.error)throw wr.error;const pr=await sb.from('blc_participants').delete().eq('competition_id',comp.id);if(pr.error)throw pr.error}const cr=await sb.from('blc_competitions').delete().eq('id',comp.id);if(cr.error)throw cr.error}
-async function runSpreadsheetImport(){if(!importPrepared?.rows?.length)return alert('Choose and preview a spreadsheet first.');const name=el('importCompetitionName').value.trim()||importPrepared.automaticName||importPrepared.sheetName||importFileBaseName||'Imported Competition',start=el('importStartDate').value,end=el('importEndDate').value,mode=el('importMode').value;if(!start||!end)return alert('Participant names and the competition name are imported automatically. Please select only the start and end dates if they are not present in the spreadsheet.');if(end<start)return alert('End date must be after start date.');const existing=competitions.find(c=>c.start_date===start&&c.end_date===end);if(existing&&mode==='skip')return alert('A competition with these dates already exists. Choose Replace to recreate it.');const warning=existing?`This will permanently delete and recreate ${cleanCompetitionLabel(existing)}, including its participants, weigh-ins, and food logs.`:`Create ${name} with ${importPrepared.rows.length} participants?`;if(!confirm(warning))return;const log=[];const write=t=>{log.push(t);el('importLog').textContent=log.join('\n');el('importLog').classList.remove('hidden')};try{el('runImportBtn').disabled=true;setStatus('Importing spreadsheet…');if(existing){write('Deleting matching competition and related records…');await deleteCompetitionTree(existing)}write('Creating competition…');const cr=await sb.from('blc_competitions').insert({name,status:'completed',start_date:start,end_date:end,entry_fee:20,first_place_percent:70,second_place_percent:20,third_place_percent:10}).select().single();if(cr.error)throw cr.error;const rows=[];for(let i=0;i<importPrepared.rows.length;i++){const p=importPrepared.rows[i];write(`Preparing ${i+1}/${importPrepared.rows.length}: ${p.name}`);const m=await getOrCreateMember(p.name);rows.push({competition_id:cr.data.id,member_id:m.id,starting_weight:p.initial_weight,ending_weight:p.final_weight,paid:p.paid,notes:'Imported from '+importPrepared.sheetName})}write('Saving participants…');const pr=await sb.from('blc_participants').insert(rows);if(pr.error)throw pr.error;selectedCompetitionId=cr.data.id;write('Import completed successfully.');await loadAll();closeModal('importModal');showTab('competition');alert(`${rows.length} participants imported into ${name}.`)}catch(e){console.error(e);write('ERROR: '+(e.message||String(e)));setStatus('Import failed',false);alert(e.message||'Import failed')}finally{el('runImportBtn').disabled=false}}
+function inferDatesFromText(text){
+ const s=String(text||'');
+ const dates=[];
+ const push=v=>{const iso=excelDateToISO(v);if(iso&&!dates.includes(iso))dates.push(iso)};
+ for(const m of s.matchAll(/(\d{1,2})[-_ \/]?([A-Za-z]{3,9})[-_ \/]?(\d{2,4})/g))push(`${m[1]} ${m[2]} ${m[3]}`);
+ for(const m of s.matchAll(/(\d{1,2})[-_ \/](\d{1,2})[-_ \/](\d{2,4})/g))push(`${m[1]}/${m[2]}/${m[3]}`);
+ return {start:dates[0]||'',end:dates[1]||''};
+}
+function openImportHistory(){
+ importWorkbook=null;importPrepared=null;importFileBaseName='';
+ el('importFile').value='';el('importFileName').textContent='All worksheet tabs will be imported automatically';
+ el('importPreview').innerHTML='';el('importMessage').innerHTML='';el('importLog').classList.add('hidden');
+ el('importModal').classList.remove('hidden');
+}
+function parseImportSheet(sheetName){
+ const ws=importWorkbook?.Sheets?.[sheetName];
+ if(!ws)return {sheetName,error:'Worksheet not found'};
+ const matrix=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true,blankrows:false});
+ if(!matrix.length)return {sheetName,error:'No data'};
+ const headerIndex=detectImportHeader(matrix),headers=makeUniqueHeaders(matrix[headerIndex]);
+ const rows=matrix.slice(headerIndex+1).map(arr=>Object.fromEntries(headers.map((h,i)=>[h,arr?.[i]??''])));
+ const nameCol=pickColumn(headers,[/^name$/,/participant/,/member/,/person/])||headers[0];
+ const startWeightCol=pickColumn(headers,[/initial.*weight/,/start.*weight/,/starting.*weight/,/^initial$/,/^start$/]);
+ const finalWeightCol=pickColumn(headers,[/final.*weight/,/end.*weight/,/ending.*weight/,/current.*weight/,/^final$/,/^ending$/]);
+ const paidCol=pickColumn(headers,[/^paid$/,/payment/,/fee paid/]);
+ const startDateCol=pickColumn(headers,[/start.*date/,/begin.*date/]);
+ const endDateCol=pickColumn(headers,[/end.*date/,/final.*date/,/close.*date/]);
+ const compCol=pickColumn(headers,[/competition/,/challenge/,/^blc$/,/period name/]);
+ if(!startWeightCol)return {sheetName,error:'Starting-weight column not found'};
+ const parsed=rows.map((r,i)=>({row:headerIndex+i+2,name:String(r[nameCol]||'').trim(),initial_weight:parseWeight(r[startWeightCol]),final_weight:finalWeightCol?parseWeight(r[finalWeightCol]):null,paid:paidCol?parseBool(r[paidCol],true):true,start_date:startDateCol?excelDateToISO(r[startDateCol]):'',end_date:endDateCol?excelDateToISO(r[endDateCol]):'',competition:compCol?String(r[compCol]||'').trim():''})).filter(r=>r.name&&r.initial_weight!=null&&r.initial_weight>0);
+ const dedup=[],seen=new Set();
+ for(const r of parsed){const key=r.name.toLowerCase().replace(/\s+/g,' ');if(seen.has(key))continue;seen.add(key);dedup.push(r)}
+ if(!dedup.length)return {sheetName,error:'No valid participant rows'};
+ const metadata=matrix.slice(0,headerIndex).flat().map(x=>String(x||'').trim()).filter(Boolean);
+ const inferred=inferDatesFromText([sheetName,metadata.join(' '),importFileBaseName].join(' '));
+ const first=dedup[0]||{};
+ const metadataCompetition=metadata.find(x=>/blc|biggest loser|challenge|competition/i.test(x));
+ const automaticName=first.competition||metadataCompetition||sheetName||importFileBaseName||'Imported Competition';
+ return {sheetName,rows:dedup,name:automaticName,start:first.start_date||inferred.start,end:first.end_date||inferred.end,invalid:Math.max(0,rows.length-dedup.length)};
+}
+async function readImportFile(file){
+ if(!file)return;
+ const log=[],write=t=>{log.push(t);el('importLog').textContent=log.join('\n');el('importLog').classList.remove('hidden')};
+ try{
+  if(typeof XLSX==='undefined')throw new Error('Spreadsheet library did not load. Check your internet connection and reopen the page.');
+  el('importFileName').textContent=file.name;importFileBaseName=String(file.name||'').replace(/\.(xlsx?|csv)$/i,'').trim();
+  el('importMessage').innerHTML='<div class="import-ok"><b>Reading workbook and importing all worksheet tabs automatically…</b></div>';
+  const data=await file.arrayBuffer();importWorkbook=XLSX.read(data,{type:'array',cellDates:true});
+  const prepared=importWorkbook.SheetNames.map(parseImportSheet);
+  const valid=prepared.filter(x=>!x.error&&x.start&&x.end);
+  const skipped=prepared.filter(x=>x.error||!x.start||!x.end);
+  el('importPreview').innerHTML=`<table><thead><tr><th>Worksheet</th><th>Dates</th><th>Participants</th><th>Status</th></tr></thead><tbody>${prepared.map(x=>`<tr><td>${esc(x.sheetName)}</td><td>${x.start&&x.end?`${fmtDate(x.start)} – ${fmtDate(x.end)}`:'—'}</td><td>${x.rows?.length||0}</td><td>${x.error?esc(x.error):(!x.start||!x.end?'Dates not detected':'Ready')}</td></tr>`).join('')}</tbody></table>`;
+  if(!valid.length)throw new Error('No worksheet could be imported automatically. Each worksheet needs participant names, a starting-weight column, and dates in the sheet name or sheet contents.');
+  setStatus('Bulk importing spreadsheet…');
+  let importedCompetitions=0,importedParticipants=0,newMembers=0,replaced=0;
+  for(let i=0;i<valid.length;i++){
+   const item=valid[i];write(`Importing ${i+1}/${valid.length}: ${item.sheetName}`);
+   const ex=await sb.from('blc_competitions').select('*').eq('start_date',item.start).eq('end_date',item.end).limit(1);
+   if(ex.error)throw ex.error;
+   if(ex.data?.length){write(`  Replacing matching competition ${fmtDate(item.start)} – ${fmtDate(item.end)}`);await deleteCompetitionTree(ex.data[0]);replaced++}
+   const cr=await sb.from('blc_competitions').insert({name:item.name,status:'completed',start_date:item.start,end_date:item.end,entry_fee:20,first_place_percent:70,second_place_percent:20,third_place_percent:10}).select().single();
+   if(cr.error)throw cr.error;
+   const participantRows=[];
+   for(const person of item.rows){
+    const before=members.length;
+    const m=await getOrCreateMember(person.name);
+    if(!members.some(x=>x.id===m.id)){members.push(m);if(before===members.length-1)newMembers++}
+    participantRows.push({competition_id:cr.data.id,member_id:m.id,starting_weight:person.initial_weight,ending_weight:person.final_weight,paid:person.paid,notes:'Imported from '+item.sheetName});
+   }
+   const pr=await sb.from('blc_participants').insert(participantRows);if(pr.error)throw pr.error;
+   importedCompetitions++;importedParticipants+=participantRows.length;selectedCompetitionId=cr.data.id;
+   write(`  Saved ${participantRows.length} participants`);
+  }
+  await loadAll();showTab('history');
+  el('importMessage').innerHTML=`<div class="import-ok"><b>Bulk import completed automatically.</b><br>${importedCompetitions} competition(s), ${importedParticipants} participant(s), ${replaced} matching competition(s) replaced.${skipped.length?` ${skipped.length} worksheet(s) skipped.`:''}</div>`;
+  write('Bulk import completed successfully.');
+  setStatus('Connected');
+ }catch(e){console.error(e);write('ERROR: '+(e.message||String(e)));el('importMessage').innerHTML=`<div class="import-warning"><b>Import failed:</b> ${esc(e.message||String(e))}</div>`;setStatus('Import failed',false)}
+}
+function prepareImportPreview(){}
+async function runSpreadsheetImport(){}
+async function deleteCompetitionTree(comp){const ids=participants.filter(p=>p.competition_id===comp.id).map(p=>p.id);if(ids.length){if(foodLogAvailable){const fr=await sb.from('blc_food_logs').delete().in('participant_id',ids);if(fr.error)throw fr.error}const wr=await sb.from('blc_weighins').delete().in('participant_id',ids);if(wr.error)throw wr.error;const pr=await sb.from('blc_participants').delete().eq('competition_id',comp.id);if(pr.error)throw pr.error}else{const pr=await sb.from('blc_participants').delete().eq('competition_id',comp.id);if(pr.error)throw pr.error}const cr=await sb.from('blc_competitions').delete().eq('id',comp.id);if(cr.error)throw cr.error}
 
 async function repairHistory(){
 if(!confirm('Repair historical weights and remove duplicate participant rows? One correct record per member will be kept for each competition.'))return;
