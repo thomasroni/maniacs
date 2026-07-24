@@ -169,6 +169,26 @@ function refreshMemberOptions(selectedId=''){
  sel.onchange=()=>el('newMemberWrap').classList.toggle('hidden',sel.value!=='__new__');
  el('newMemberWrap').classList.toggle('hidden',sel.value!=='__new__');
 }
+
+async function getOrCreateMember(rawName){
+ const cleanName=String(rawName||'').trim().replace(/\s+/g,' ');
+ if(!cleanName)throw new Error('Enter member name');
+ let local=members.find(m=>m.full_name.trim().toLowerCase()===cleanName.toLowerCase());
+ if(local)return local;
+ const found=await sb.from('maniacs_members').select('*').ilike('full_name',cleanName).limit(1);
+ if(found.error)throw found.error;
+ if(found.data&&found.data.length){local=found.data[0];if(!members.some(m=>m.id===local.id))members.push(local);return local;}
+ const created=await sb.from('maniacs_members').insert({full_name:cleanName}).select().single();
+ if(!created.error){members.push(created.data);return created.data;}
+ if(created.error.code==='23505'){
+  const retry=await sb.from('maniacs_members').select('*').ilike('full_name',cleanName).limit(1).single();
+  if(retry.error)throw retry.error;
+  if(!members.some(m=>m.id===retry.data.id))members.push(retry.data);
+  return retry.data;
+ }
+ throw created.error;
+}
+
 function openParticipant(id=null){
  if(!selectedCompetitionId)return alert('Create or select a BLC first');editingParticipantId=id;const p=participants.find(x=>x.id===id);
  el('participantTitle').textContent=p?'Edit participant':'Add participant';
@@ -179,10 +199,7 @@ async function saveParticipant(){
  let memberId=el('pMember').value;let memberName='';
  if(memberId==='__new__'){
   memberName=el('pNewMember').value.trim();if(!memberName)return alert('Enter new member name');
-  const existing=members.find(m=>m.full_name.toLowerCase()===memberName.toLowerCase());
-  if(existing){memberId=existing.id;memberName=existing.full_name}else{
-   const mr=await sb.from('maniacs_members').insert({full_name:memberName}).select().single();if(mr.error)return alert(mr.error.message);memberId=mr.data.id;
-  }
+  try{const member=await getOrCreateMember(memberName);memberId=member.id;memberName=member.full_name}catch(err){return alert(err.message||String(err))}
  } else {
   const m=members.find(x=>x.id===memberId);if(!m)return alert('Select a member');memberName=m.full_name;
  }
@@ -208,8 +225,8 @@ async function seedHistory(){
   if(cr.error){alert(cr.error.message);break}
   const rows=[];
   for(const p of item.participants){
-   let member=members.find(m=>m.full_name.toLowerCase()===p.name.toLowerCase());
-   if(!member){const mr=await sb.from('maniacs_members').insert({full_name:p.name}).select().single();if(mr.error){alert(mr.error.message);return}member=mr.data;members.push(member)}
+   let member;
+   try{member=await getOrCreateMember(p.name)}catch(err){alert(err.message||String(err));return}
    rows.push({competition_id:cr.data.id,member_id:member.id,starting_weight:p.initial_weight,ending_weight:p.final_weight,paid:p.paid});
   }
   if(rows.length){const pr=await sb.from('blc_participants').insert(rows);if(pr.error){alert(pr.error.message);break}}
