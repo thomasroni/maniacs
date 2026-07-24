@@ -594,27 +594,55 @@ async function readImportFile(file){
   let importedCompetitions=0,importedParticipants=0,newMembers=0,replaced=0;
   for(let i=0;i<valid.length;i++){
    const item=valid[i];write(`Importing ${i+1}/${valid.length}: ${item.sheetName}`);
-   const ex=await sb.from('blc_competitions').select('*').eq('start_date',item.start).eq('end_date',item.end);
+   const ex=await sb.from('blc_competitions').select('*').eq('start_date',item.start).eq('end_date',item.end).order('created_at',{ascending:true});
    if(ex.error)throw ex.error;
-   if(ex.data?.length){
-    write(`  Removing ${ex.data.length} matching competition record(s) for ${fmtDate(item.start)} – ${fmtDate(item.end)}`);
-    for(const oldCompetition of ex.data){await deleteCompetitionTree(oldCompetition);replaced++}
+
+   // Reuse one matching competition instead of deleting it first. This avoids an
+   // empty history card when database delete policies or realtime refreshes race
+   // with the import. Any duplicate competition records are removed only after
+   // the participant rows have been saved and verified.
+   let competition=ex.data?.[0]||null;
+   if(competition){
+    const upd=await sb.from('blc_competitions').update({name:item.name,status:'completed',start_date:item.start,end_date:item.end,entry_fee:20,first_place_percent:70,second_place_percent:20,third_place_percent:10}).eq('id',competition.id).select().single();
+    if(upd.error)throw upd.error;
+    competition=upd.data;
+    const oldLookup=await sb.from('blc_participants').select('id').eq('competition_id',competition.id);
+    if(oldLookup.error)throw oldLookup.error;
+    const oldIds=(oldLookup.data||[]).map(x=>x.id);
+    if(oldIds.length){
+     if(foodLogAvailable){const fr=await sb.from('blc_food_logs').delete().in('participant_id',oldIds);if(fr.error)throw fr.error}
+     const wr=await sb.from('blc_weighins').delete().in('participant_id',oldIds);if(wr.error)throw wr.error;
+    }
+    const clear=await sb.from('blc_participants').delete().eq('competition_id',competition.id).select('id');
+    if(clear.error)throw clear.error;
+    write(`  Reusing matching competition and replacing ${oldIds.length} participant row(s)`);
+    replaced++;
+   }else{
+    const cr=await sb.from('blc_competitions').insert({name:item.name,status:'completed',start_date:item.start,end_date:item.end,entry_fee:20,first_place_percent:70,second_place_percent:20,third_place_percent:10}).select().single();
+    if(cr.error)throw cr.error;
+    competition=cr.data;
    }
-   const cr=await sb.from('blc_competitions').insert({name:item.name,status:'completed',start_date:item.start,end_date:item.end,entry_fee:20,first_place_percent:70,second_place_percent:20,third_place_percent:10}).select().single();
-   if(cr.error)throw cr.error;
+
    const participantRows=[];
    for(const person of item.rows){
-    const before=members.length;
+    const existed=members.some(x=>String(x.full_name||'').trim().toLowerCase()===String(person.name||'').trim().toLowerCase());
     const m=await getOrCreateMember(person.name);
-    if(!members.some(x=>x.id===m.id)){members.push(m);if(before===members.length-1)newMembers++}
-    participantRows.push({competition_id:cr.data.id,member_id:m.id,starting_weight:person.initial_weight,ending_weight:person.final_weight,paid:person.paid,notes:'Imported from '+item.sheetName});
+    if(!members.some(x=>x.id===m.id))members.push(m);
+    if(!existed)newMembers++;
+    participantRows.push({competition_id:competition.id,member_id:m.id,starting_weight:person.initial_weight,ending_weight:person.final_weight,paid:person.paid,notes:'Imported from '+item.sheetName});
    }
-   const pr=await sb.from('blc_participants').insert(participantRows).select('id');if(pr.error)throw pr.error;
-   const verify=await sb.from('blc_participants').select('id',{count:'exact',head:true}).eq('competition_id',cr.data.id);
+   const pr=await sb.from('blc_participants').insert(participantRows).select('id,competition_id,member_id');
+   if(pr.error)throw pr.error;
+   const verify=await sb.from('blc_participants').select('id,member_id,starting_weight,ending_weight').eq('competition_id',competition.id);
    if(verify.error)throw verify.error;
-   const savedCount=Number(verify.count||0);
-   if(savedCount!==participantRows.length)throw new Error(`${item.sheetName}: expected ${participantRows.length} participants but database saved ${savedCount}.`);
-   importedCompetitions++;importedParticipants+=savedCount;selectedCompetitionId=cr.data.id;
+   const savedCount=(verify.data||[]).length;
+   if(savedCount!==participantRows.length)throw new Error(`${item.sheetName}: expected ${participantRows.length} participants but database returned ${savedCount}.`);
+
+   // Remove any duplicate competition cards only after the canonical record is complete.
+   for(const duplicate of (ex.data||[]).slice(1)){
+    try{await deleteCompetitionTree(duplicate);replaced++}catch(cleanupError){console.warn('Duplicate cleanup failed',cleanupError)}
+   }
+   importedCompetitions++;importedParticipants+=savedCount;selectedCompetitionId=competition.id;
    write(`  Saved and verified ${savedCount} participants`);
   }
   await loadAll();showTab('history');
