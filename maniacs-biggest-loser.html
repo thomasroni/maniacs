@@ -154,8 +154,17 @@
         <div id="foodSearchResults" class="food-search-results"></div>
       </div>
     </div>
-    <label><span>Serving</span><input id="fServing" placeholder="Filled automatically; you can edit"></label>
-    <label><span>Calories</span><input id="fCalories" type="number" min="0" step="1" inputmode="numeric" placeholder="Filled automatically"></label>
+    <div style="grid-column:1/-1">
+      <label><span>Serving amount</span></label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <input id="fServingAmount" type="number" min="0.01" step="0.01" inputmode="decimal" value="1" oninput="recalculateFoodServing()" placeholder="Example: 0.5 or 50">
+        <select id="fServingUnit" onchange="recalculateFoodServing()"><option value="serving">Serving(s)</option><option value="g">Grams (g)</option></select>
+      </div>
+      <div id="servingReference" class="muted" style="margin-top:6px">Select a USDA food to calculate from its reference serving.</div>
+      <input id="fServing" type="hidden">
+    </div>
+    <label><span>Calories</span><input id="fCalories" type="number" min="0" step="1" inputmode="numeric" placeholder="Calculated automatically"></label>
+    <div id="nutritionPreview" class="auto-cal-note" style="grid-column:1/-1">Nutrition will be calculated after selecting a USDA food.</div>
     <div class="auto-cal-note">Calories are USDA estimates. Recipes, restaurant meals, brands, and portion sizes can vary, so adjust the serving or calories when needed.</div>
   </div>
   <div class="toolbar">
@@ -399,7 +408,7 @@ function openFoodLog(){
  el('fParticipant').innerHTML=people.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
  const selected=el('foodMember')?.value;if(selected&&people.some(p=>p.id===selected))el('fParticipant').value=selected;
  el('fDate').value=el('foodDateFilter')?.value||new Date().toISOString().slice(0,10);
- el('fMeal').value='Breakfast';el('fFood').value='';el('fServing').value='';el('fCalories').value='';
+ el('fMeal').value='Breakfast';el('fFood').value='';el('fServing').value='';el('fServingAmount').value='1';el('fServingUnit').value='serving';el('fCalories').value='';el('servingReference').textContent='Select a USDA food to calculate from its reference serving.';el('nutritionPreview').textContent='Nutrition will be calculated after selecting a USDA food.';
  usdaFoodResults=[];selectedUsdaFood=null;if(el('foodSearchResults'))el('foodSearchResults').innerHTML='';if(el('foodSearchStatus'))el('foodSearchStatus').textContent='Type at least 2 letters to search USDA foods.';
  modal.classList.remove('hidden');
 }
@@ -479,7 +488,7 @@ async function searchUsdaFoods(){
    const serving=usdaServing(food,kcal100);
    const grams=(Number(food.servingSize)>0&&['g','gram','grams'].includes(String(food.servingSizeUnit||'').toLowerCase()))?Number(food.servingSize):100;
    const nutrition=scaleNutrition(usdaNutritionPer100(food),grams);
-   return {...food,_kcal100:kcal100,_servingText:serving.text,_servingCalories:serving.calories,_servingGrams:grams,_nutrition:nutrition};
+   return {...food,_kcal100:kcal100,_servingText:serving.text,_servingCalories:serving.calories,_servingGrams:grams,_nutrition:nutrition,_nutritionPer100:usdaNutritionPer100(food)};
   }).filter(food=>food._kcal100>0);
   if(!usdaFoodResults.length){
    el('foodSearchStatus').textContent='No calorie matches found. Try a simpler food name or enter calories manually.';
@@ -496,19 +505,42 @@ async function searchUsdaFoods(){
   el('foodSearchStatus').textContent='Could not reach USDA. You can retry or enter calories manually.';
  }
 }
+function foodServingValues(){
+ const amount=Number(el('fServingAmount')?.value);
+ const unit=el('fServingUnit')?.value||'serving';
+ if(!selectedUsdaFood||!Number.isFinite(amount)||amount<=0)return null;
+ const referenceGrams=Number(selectedUsdaFood._servingGrams||100);
+ const grams=unit==='g'?amount:amount*referenceGrams;
+ const factor=grams/100;
+ const per100=selectedUsdaFood._nutritionPer100||usdaNutritionPer100(selectedUsdaFood);
+ const nutrients=Object.fromEntries(Object.entries(per100).map(([k,v])=>[k,Math.round(Number(v||0)*factor*10)/10]));
+ const calories=Math.round(Number(selectedUsdaFood._kcal100||0)*factor);
+ const servingText=unit==='g'?`${num(amount,2)} g`:`${num(amount,2)} serving${amount===1?'':'s'} (${num(grams,1)} g)`;
+ return {amount,unit,grams,calories,nutrients,servingText,referenceGrams};
+}
+function recalculateFoodServing(){
+ const v=foodServingValues();if(!v)return;
+ el('fServing').value=v.servingText;
+ el('fCalories').value=v.calories;
+ el('servingReference').textContent=`Reference: 1 serving = ${num(v.referenceGrams,1)} g and ${selectedUsdaFood._servingCalories} calories.`;
+ const n=v.nutrients;
+ el('nutritionPreview').innerHTML=`For ${esc(v.servingText)}: <b>${v.calories} cal</b> · Protein ${num(n.protein,1)} g · Carbs ${num(n.carbs,1)} g · Fat ${num(n.fat,1)} g · Fiber ${num(n.fiber,1)} g · Sugar ${num(n.sugar,1)} g · Sodium ${num(n.sodium,1)} mg`;
+}
 function selectUsdaFood(index){
  const food=usdaFoodResults[index];if(!food)return;
  selectedUsdaFood=food;
  el('fFood').value=food.description||'';
- el('fServing').value=food._servingText||'100 g';
- el('fCalories').value=food._servingCalories||Math.round(food._kcal100||0);
+ el('fServingAmount').value='1';
+ el('fServingUnit').value='serving';
+ recalculateFoodServing();
  el('foodSearchResults').innerHTML='';
  const brand=food.brandOwner||food.brandName||food.dataType||'USDA';
- el('foodSearchStatus').textContent=`Selected: ${brand}. Serving and calories can be edited.`;
+ el('foodSearchStatus').textContent=`Selected: ${brand}. Choose servings such as 0.5 or 0.25, or switch to grams.`;
 }
 
 async function saveFoodLog(){
- const n=selectedUsdaFood?selectedUsdaFood._nutrition||{}:{};
+ const scaled=foodServingValues();
+ const n=scaled?scaled.nutrients:(selectedUsdaFood?selectedUsdaFood._nutrition||{}:{});
  const row={
   participant_id:el('fParticipant').value,
   log_date:el('fDate').value,
@@ -518,7 +550,7 @@ async function saveFoodLog(){
   calories:Number(el('fCalories').value),
   fdc_id:selectedUsdaFood?.fdcId?String(selectedUsdaFood.fdcId):null,
   brand:selectedUsdaFood?.brandOwner||selectedUsdaFood?.brandName||null,
-  serving_grams:selectedUsdaFood?Number(selectedUsdaFood._servingGrams||100):null,
+  serving_grams:scaled?Number(scaled.grams):selectedUsdaFood?Number(selectedUsdaFood._servingGrams||100):null,
   protein_g:selectedUsdaFood?Number(n.protein||0):null,
   carbs_g:selectedUsdaFood?Number(n.carbs||0):null,
   fat_g:selectedUsdaFood?Number(n.fat||0):null,
