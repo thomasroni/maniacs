@@ -189,8 +189,24 @@ function defaultMemberId(){return localStorage.getItem(PROFILE_MEMBER_KEY)||''}
 function adminModeEnabled(){return localStorage.getItem(ADMIN_MODE_KEY)==='yes'}
 function defaultParticipantForCompetition(competitionId=selectedCompetitionId){const mid=defaultMemberId();return mid?participants.find(p=>p.member_id===mid&&p.competition_id===competitionId):null}
 function preferredParticipantId(people,prior=''){if(prior&&people.some(p=>p.id===prior))return prior;if(!adminModeEnabled()){const preferred=defaultParticipantForCompetition()?.id;if(preferred&&people.some(p=>p.id===preferred))return preferred}return people[0]?.id||''}
-function entryParticipantId(people,prior=''){if(!adminModeEnabled()){const preferred=defaultParticipantForCompetition()?.id;if(preferred&&people.some(p=>p.id===preferred))return preferred}if(prior&&people.some(p=>p.id===prior))return prior;return people[0]?.id||''}
-function openProfileSettings(){const sel=el('defaultProfileMember');sel.innerHTML='<option value="">No default participant</option>'+members.map(m=>`<option value="${m.id}">${esc(m.full_name)}</option>`).join('');sel.value=defaultMemberId();el('adminModeSetting').checked=adminModeEnabled();const m=members.find(x=>x.id===defaultMemberId());el('profileSettingsNote').textContent=m?`Current default: ${m.full_name}`:'No default participant is currently set.';el('profileSettingsModal').classList.remove('hidden')}
+function participantNameSort(a,b){return String(a?.name||a?.full_name||'').localeCompare(String(b?.name||b?.full_name||''),undefined,{sensitivity:'base'})}
+function orderedParticipants(people){
+ const list=[...(people||[])].sort(participantNameSort),mid=defaultMemberId();
+ if(!mid)return list;
+ const i=list.findIndex(p=>p.member_id===mid||p.id===mid);
+ if(i>0)list.unshift(list.splice(i,1)[0]);
+ return list;
+}
+function entryParticipantId(people,prior=''){
+ const ordered=orderedParticipants(people);
+ if(!adminModeEnabled()){
+  const mid=defaultMemberId(),preferred=ordered.find(p=>p.member_id===mid);
+  return preferred?.id||'';
+ }
+ if(prior&&ordered.some(p=>p.id===prior))return prior;
+ return ordered[0]?.id||'';
+}
+function openProfileSettings(){const sel=el('defaultProfileMember');sel.innerHTML='<option value="">No default participant</option>'+orderedParticipants(members).map(m=>`<option value="${m.id}">${esc(m.full_name)}${m.id===defaultMemberId()?' (Default)':''}</option>`).join('');sel.value=defaultMemberId();el('adminModeSetting').checked=adminModeEnabled();const m=members.find(x=>x.id===defaultMemberId());el('profileSettingsNote').textContent=m?`Current default: ${m.full_name}`:'No default participant is currently set.';el('profileSettingsModal').classList.remove('hidden')}
 function saveProfileSettings(){const mid=el('defaultProfileMember').value;if(mid)localStorage.setItem(PROFILE_MEMBER_KEY,mid);else localStorage.removeItem(PROFILE_MEMBER_KEY);localStorage.setItem(ADMIN_MODE_KEY,el('adminModeSetting').checked?'yes':'no');closeModal('profileSettingsModal');render();const m=members.find(x=>x.id===mid);alert(m?`${m.full_name} is now your default participant on this device.`:'Default participant preference cleared.')}
 function clearProfileSettings(){localStorage.removeItem(PROFILE_MEMBER_KEY);localStorage.removeItem(ADMIN_MODE_KEY);el('defaultProfileMember').value='';el('adminModeSetting').checked=false;el('profileSettingsNote').textContent='Preference cleared. Save or close this window.';render()}
 function closeModal(id){el(id).classList.add('hidden')}function setStatus(t,ok=true){el('status').textContent=t;el('status').classList.toggle('bad',!ok)}function currentCompetition(){return competitions.find(c=>c.id===selectedCompetitionId)}function memberName(id){return members.find(m=>m.id===id)?.full_name||'Unknown'}function calc(p){const ws=weighins.filter(w=>w.participant_id===p.id).sort((a,b)=>String(a.weigh_date).localeCompare(String(b.weigh_date)));const latest=ws.at(-1);const final=latest?Number(latest.weight):(p.ending_weight==null?null:Number(p.ending_weight));const start=p.starting_weight==null?null:Number(p.starting_weight);const loss=start!=null&&final!=null?start-final:null;const pct=loss!=null&&start>0?loss/start*100:null;return {...p,name:memberName(p.member_id),current_weight:final,loss,pct,last_date:latest?.weigh_date||null}}function currentPeople(){return participants.filter(p=>p.competition_id===selectedCompetitionId).map(calc).sort((a,b)=>(b.pct??-999)-(a.pct??-999))}function fmtDate(d){if(!d)return'—';return new Date(d+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}function daysRemaining(c){if(!c?.end_date)return'—';return Math.max(0,Math.ceil((new Date(c.end_date+'T23:59:59')-new Date())/86400000))}
@@ -282,7 +298,7 @@ function renderProgress(){
  const memberSel=el('progressMember'),compSel=el('progressCompetition');if(!memberSel||!compSel)return;
  const eligible=members.filter(m=>participants.some(p=>p.member_id===m.id));
  const priorMember=memberSel.value;
- memberSel.innerHTML=eligible.map(m=>`<option value="${m.id}">${esc(m.full_name)}</option>`).join('')||'<option value="">No participants</option>';
+ memberSel.innerHTML=orderedParticipants(eligible).map(m=>`<option value="${m.id}">${esc(m.full_name)}${m.id===defaultMemberId()?' (Default)':''}</option>`).join('')||'<option value="">No participants</option>';
  const preferredMember=priorMember&&eligible.some(m=>m.id===priorMember)?priorMember:(!adminModeEnabled()&&eligible.some(m=>m.id===defaultMemberId())?defaultMemberId():'');
  if(preferredMember&&eligible.some(m=>m.id===preferredMember))memberSel.value=preferredMember;
  const memberId=memberSel.value;const rows=participantCompetitionRows(memberId);const priorComp=compSel.value;
@@ -311,7 +327,7 @@ function entryCompetitionForDefault(){
  const active=competitions.filter(c=>String(c.status||'').toLowerCase()==='active');
  return active.find(c=>participants.some(p=>p.competition_id===c.id&&p.member_id===mid))||active[0]||currentCompetition();
 }
-function peopleForCompetition(competitionId){return participants.filter(p=>p.competition_id===competitionId).map(calc).sort((a,b)=>(b.pct??-999)-(a.pct??-999))}
+function peopleForCompetition(competitionId){return orderedParticipants(participants.filter(p=>p.competition_id===competitionId).map(calc))}
 function openWeighinFromProgress(){
  const memberId=el('progressMember')?.value,viewCompetitionId=el('progressCompetition')?.value;
  if(adminModeEnabled()){
@@ -370,7 +386,7 @@ function renderFoodLog(){
   return;
  }
  const people=foodEligibleParticipants(),prior=memberSel.value;
- memberSel.innerHTML=people.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')||'<option value="">No participants</option>';
+ memberSel.innerHTML=orderedParticipants(people).map(p=>`<option value="${p.id}">${esc(p.name)}${p.member_id===defaultMemberId()?' (Default)':''}</option>`).join('')||'<option value="">No participants</option>';
  const preferredFoodParticipant=preferredParticipantId(people,prior);if(preferredFoodParticipant)memberSel.value=preferredFoodParticipant;
  if(!dateEl.value)dateEl.value=new Date().toISOString().slice(0,10);
  memberSel.onchange=renderFoodLog;dateEl.onchange=renderFoodLog;
@@ -409,7 +425,7 @@ function renderFoodLog(){
 function openCalorieGoal(){
  const people=foodEligibleParticipants();if(!people.length)return alert('Add a participant to the selected competition first.');
  const modal=el('calorieGoalModal'),sel=el('goalParticipant');
- sel.innerHTML=people.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+ sel.innerHTML=orderedParticipants(people).map(p=>`<option value="${p.id}">${esc(p.name)}${p.member_id===defaultMemberId()?' (Default)':''}</option>`).join('');
  const current=el('foodMember')?.value,preferred=entryParticipantId(people,current);if(preferred)sel.value=preferred;
  const loadValue=()=>{const row=calorieGoals.find(g=>g.participant_id===sel.value);el('goalCalories').value=row?.daily_calorie_limit||'';};
  sel.onchange=loadValue;loadValue();
@@ -439,7 +455,7 @@ function openFoodLog(){
  if(!modal)return alert('Food Log form is unavailable. Please upload the latest HTML file.');
  if(!foodLogAvailable)return alert('Run the Food Log SQL in Supabase first.');
  const people=foodEligibleParticipants();if(!people.length)return alert('Add a participant to the selected competition first.');
- el('fParticipant').innerHTML=people.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+ el('fParticipant').innerHTML=orderedParticipants(people).map(p=>`<option value="${p.id}">${esc(p.name)}${p.member_id===defaultMemberId()?' (Default)':''}</option>`).join('');
  const selected=el('foodMember')?.value,preferred=entryParticipantId(people,selected);if(preferred)el('fParticipant').value=preferred;
  el('fDate').value=el('foodDateFilter')?.value||new Date().toISOString().slice(0,10);
  el('fMeal').value='Breakfast';el('fFood').value='';el('fServing').value='';el('fServingAmount').value='1';el('fServingUnit').value='serving';el('fCalories').value='';el('servingReference').textContent='Select a USDA food to calculate from its reference serving.';el('nutritionPreview').textContent='Nutrition will be calculated after selecting a USDA food.';
@@ -626,30 +642,49 @@ function openCompetition(){editingCompetitionId=null;el('competitionTitle').text
 function refreshMemberOptions(selected=''){el('pMember').innerHTML='<option value="">Select member</option>'+members.map(m=>`<option value="${m.id}" ${m.id===selected?'selected':''}>${esc(m.full_name)}</option>`).join('')+'<option value="__new__">+ Add new member</option>';el('pMember').onchange=()=>el('newMemberWrap').classList.toggle('hidden',el('pMember').value!=='__new__')}async function getOrCreateMember(name){const clean=String(name||'').trim().replace(/\s+/g,' ');let m=members.find(x=>x.full_name.toLowerCase()===clean.toLowerCase());if(m)return m;const f=await sb.from('maniacs_members').select('*').ilike('full_name',clean).limit(1);if(f.error)throw f.error;if(f.data?.length)return f.data[0];const r=await sb.from('maniacs_members').insert({full_name:clean}).select().single();if(!r.error)return r.data;if(r.error.code==='23505'){const q=await sb.from('maniacs_members').select('*').ilike('full_name',clean).limit(1).single();if(q.error)throw q.error;return q.data}throw r.error}
 function openParticipant(id=null){const c=currentCompetition();if(!c)return alert('Select a competition');if(String(c.status).toLowerCase()==='completed')return alert('This competition is completed and locked. Change status to Active to edit it.');editingParticipantId=id;const p=participants.find(x=>x.id===id);refreshMemberOptions(p?.member_id||'');el('pNewMember').value='';el('pPaid').value=String(p?.paid??true);el('pInitial').value=p?.starting_weight??'';el('pFinal').value=p?.ending_weight??'';el('pNotes').value=p?.notes||'';el('deleteParticipantBtn').classList.toggle('hidden',!p);el('participantModal').classList.remove('hidden')}async function saveParticipant(){let mid=el('pMember').value;if(mid==='__new__'){try{mid=(await getOrCreateMember(el('pNewMember').value)).id}catch(e){return alert(e.message)}}if(!mid)return alert('Select a member');const duplicate=participants.find(p=>p.competition_id===selectedCompetitionId&&p.member_id===mid&&p.id!==editingParticipantId);if(duplicate)return alert('This member is already entered in the selected competition. Edit the existing participant instead.');const row={competition_id:selectedCompetitionId,member_id:mid,paid:el('pPaid').value==='true',starting_weight:el('pInitial').value===''?null:Number(el('pInitial').value),ending_weight:el('pFinal').value===''?null:Number(el('pFinal').value),notes:el('pNotes').value.trim()};const r=editingParticipantId?await sb.from('blc_participants').update(row).eq('id',editingParticipantId):await sb.from('blc_participants').insert(row);if(r.error)return alert(r.error.message);closeModal('participantModal');loadAll()}async function deleteParticipant(){if(!confirm('Delete participant?'))return;const r=await sb.from('blc_participants').delete().eq('id',editingParticipantId);if(r.error)return alert(r.error.message);closeModal('participantModal');loadAll()}
 function openWeighin(requestedCompetitionId=null,requestedMemberId=null){
- const isAdmin=adminModeEnabled();
- const c=isAdmin?(competitions.find(x=>x.id===(requestedCompetitionId||selectedCompetitionId))||currentCompetition()):entryCompetitionForDefault();
+ const isAdmin=adminModeEnabled(),defaultMid=defaultMemberId();
+ let c;
+ if(isAdmin){
+  c=competitions.find(x=>x.id===(requestedCompetitionId||selectedCompetitionId))||currentCompetition();
+ }else{
+  const selected=currentCompetition();
+  const selectedWorks=selected&&String(selected.status||'').toLowerCase()==='active'&&participants.some(p=>p.competition_id===selected.id&&p.member_id===defaultMid);
+  c=selectedWorks?selected:entryCompetitionForDefault();
+ }
  if(!c)return alert('No active competition is available for recording a weigh-in.');
  if(String(c.status).toLowerCase()==='completed')return alert('This competition is completed and locked.');
- const ps=peopleForCompetition(c.id),selector=el('wParticipant');
- selector.innerHTML=ps.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+ let ps=orderedParticipants(participants.filter(p=>p.competition_id===c.id).map(calc));
+ const selector=el('wParticipant');
+ if(!ps.length)return alert('No participants are entered in this competition.');
+ selector.innerHTML=ps.map(p=>`<option value="${p.id}">${esc(p.name)}${p.member_id===defaultMid?' (Default)':''}</option>`).join('');
  let chosen='';
  if(!isAdmin){
-  const preferred=participants.find(p=>p.competition_id===c.id&&p.member_id===defaultMemberId());
+  const preferred=ps.find(p=>p.member_id===defaultMid);
   if(!preferred)return alert('Your saved default participant is not entered in the active competition. Add the participant or update My Profile.');
   chosen=preferred.id;
  }else if(requestedMemberId){
-  chosen=participants.find(p=>p.competition_id===c.id&&p.member_id===requestedMemberId)?.id||'';
+  chosen=ps.find(p=>p.member_id===requestedMemberId)?.id||'';
  }
- if(!chosen)chosen=entryParticipantId(ps,selector.value);
+ if(!chosen)chosen=ps[0]?.id||'';
  selector.value=chosen;
+ // Force the saved profile immediately before entry in non-admin mode.
  selector.disabled=!isAdmin;
- selector.title=!isAdmin?'Your saved profile is used in non-admin mode. Enable Admin Mode to choose another participant.':'';
+ selector.title=!isAdmin?'Your saved default participant is locked for data entry in non-admin mode.':'';
+ selector.dataset.competitionId=c.id;
  const dates=competitionDates(c),today=new Date().toISOString().slice(0,10);
  el('wDate').min=dates.start||'';el('wDate').max=dates.end||'';
  el('wDate').value=dates.end&&today>dates.end?dates.end:(dates.start&&today<dates.start?dates.start:today);
  el('wWeight').value='';
  el('weighinModal').classList.remove('hidden');
-}async function saveWeighin(){const row={participant_id:el('wParticipant').value,weigh_date:el('wDate').value,weight:Number(el('wWeight').value)};if(!row.participant_id||!row.weigh_date||!row.weight||row.weight<=0)return alert('Complete all fields with a valid weight');const p=participants.find(x=>x.id===row.participant_id),c=competitions.find(x=>x.id===p?.competition_id),dates=competitionDates(c);if(dates.start&&row.weigh_date<dates.start)return alert('The weigh-in date must be on or after the BLC start date.');if(dates.end&&row.weigh_date>dates.end)return alert('The weigh-in date must be on or before the BLC end date.');const existing=weighins.find(w=>w.participant_id===row.participant_id&&w.weigh_date===row.weigh_date);const r=existing?await sb.from('blc_weighins').update({weight:row.weight}).eq('id',existing.id):await sb.from('blc_weighins').insert(row);if(r.error)return alert(r.error.message);await sb.from('blc_participants').update({ending_weight:row.weight}).eq('id',row.participant_id);closeModal('weighinModal');loadAll()}async function deleteWeighin(id){if(!confirm('Delete this weigh-in?'))return;const r=await sb.from('blc_weighins').delete().eq('id',id);if(r.error)return alert(r.error.message);loadAll()}
+}async function saveWeighin(){
+ const selector=el('wParticipant');
+ if(!adminModeEnabled()){
+  const competitionId=selector.dataset.competitionId;
+  const forced=participants.find(p=>p.competition_id===competitionId&&p.member_id===defaultMemberId());
+  if(!forced)return alert('Your saved default participant is not available in this competition.');
+  selector.value=forced.id;
+ }
+ const row={participant_id:selector.value,weigh_date:el('wDate').value,weight:Number(el('wWeight').value)};if(!row.participant_id||!row.weigh_date||!row.weight||row.weight<=0)return alert('Complete all fields with a valid weight');const p=participants.find(x=>x.id===row.participant_id),c=competitions.find(x=>x.id===p?.competition_id),dates=competitionDates(c);if(dates.start&&row.weigh_date<dates.start)return alert('The weigh-in date must be on or after the BLC start date.');if(dates.end&&row.weigh_date>dates.end)return alert('The weigh-in date must be on or before the BLC end date.');const existing=weighins.find(w=>w.participant_id===row.participant_id&&w.weigh_date===row.weigh_date);const r=existing?await sb.from('blc_weighins').update({weight:row.weight}).eq('id',existing.id):await sb.from('blc_weighins').insert(row);if(r.error)return alert(r.error.message);await sb.from('blc_participants').update({ending_weight:row.weight}).eq('id',row.participant_id);closeModal('weighinModal');loadAll()}async function deleteWeighin(id){if(!confirm('Delete this weigh-in?'))return;const r=await sb.from('blc_weighins').delete().eq('id',id);if(r.error)return alert(r.error.message);loadAll()}
 function openClone(){if(!currentCompetition())return alert('Create the destination competition first');el('cloneSource').innerHTML=competitions.filter(c=>c.id!==selectedCompetitionId).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');el('cloneModal').classList.remove('hidden')}async function cloneParticipants(){const src=el('cloneSource').value;if(!src)return alert('Select a source');const existing=new Set(participants.filter(p=>p.competition_id===selectedCompetitionId).map(p=>p.member_id));const rows=participants.filter(p=>p.competition_id===src&&!existing.has(p.member_id)).map(p=>({competition_id:selectedCompetitionId,member_id:p.member_id,paid:p.paid,starting_weight:null,ending_weight:null,notes:''}));if(!rows.length)return alert('No new participants to copy');const r=await sb.from('blc_participants').insert(rows);if(r.error)return alert(r.error.message);closeModal('cloneModal');loadAll()}
 function exportCSV(){const c=currentCompetition(),ps=currentPeople();if(!c)return;const paid=ps.filter(p=>p.paid).length,pool=paid*Number(c.entry_fee||0),splits=[Number(c.first_place_percent||0),Number(c.second_place_percent||0),Number(c.third_place_percent||0)];const lines=[['Rank','Name','Start Weight','Current/Final Weight','Loss','Percent Loss','Payout','Paid'],...ps.map((p,i)=>[p.pct==null?'':i+1,p.name,p.starting_weight??'',p.current_weight??'',p.loss??'',p.pct??'',i<3&&p.pct!=null?(pool*splits[i]/100).toFixed(2):'',p.paid?'Yes':'No'])];const csv=lines.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=(c.name||'BLC')+'-leaderboard.csv';a.click();URL.revokeObjectURL(a.href)}
 
