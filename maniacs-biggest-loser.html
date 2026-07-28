@@ -475,19 +475,42 @@ function renderFoodLog(){
  const remaining=limit?limit-netCalories:null;
  const pct=limit?Math.max(0,Math.min(100,netCalories/limit*100)):0;
  const fillClass=limit&&netCalories>limit?'over':limit&&netCalories>=limit*.85?'warn':'';
- const statusText=!limit?'No daily limit set':remaining>=0?`${Math.round(remaining)} calorie deficit vs limit`:`${Math.round(Math.abs(remaining))} calories over net limit`;
+ const statusText=!limit?'No daily limit set':remaining>=0?`${Math.round(remaining)} calorie deficit vs limit`:`${Math.round(Math.abs(remaining))} calorie surplus vs limit`;
+ const dailyLb=remaining==null?null:remaining/3500;
+ const participant=currentPeople().find(p=>p.id===participantId);
+ const c=currentCompetition(),dates=competitionDates(c);
+ const allDates=[...new Set([
+  ...foodlogs.filter(x=>x.participant_id===participantId).map(x=>x.log_date),
+  ...workoutlogs.filter(x=>x.participant_id===participantId).map(x=>x.workout_date)
+ ])].filter(d=>(!dates.start||d>=dates.start)&&(!dates.end||d<=dates.end)&&d<=logDate).sort();
+ const loggedDeficits=limit?allDates.map(d=>{
+  const food=foodlogs.filter(x=>x.participant_id===participantId&&x.log_date===d).reduce((s,x)=>s+Number(x.calories||0),0);
+  const exercise=workoutlogs.filter(x=>x.participant_id===participantId&&x.workout_date===d).reduce((s,x)=>s+Number(x.calories_burned||0),0);
+  return limit-(food-exercise);
+ }):[];
+ const competitionDeficit=loggedDeficits.reduce((s,x)=>s+x,0);
+ const expectedLoss=limit?competitionDeficit/3500:null;
+ const averageDeficit=loggedDeficits.length?competitionDeficit/loggedDeficits.length:null;
+ const weeklyProjection=averageDeficit==null?null:averageDeficit*7/3500;
+ const actualLoss=participant?.loss==null?null:Number(participant.loss);
+ const expectedVsActual=expectedLoss==null||actualLoss==null?null:actualLoss-expectedLoss;
+ const lossText=v=>v==null?'—':`${v>=0?'':'+'}${Math.abs(v).toFixed(2)} lb${v<0?' gain':''}`;
  summary.innerHTML=[
   ['Food consumed',Math.round(total)+' cal'],
   ['Workout burned',Math.round(burned)+' cal'],
   ['Net calories',Math.round(netCalories)+' cal'],
   ['Daily limit',limit?Math.round(limit)+' cal':'Not set'],
-  ['Deficit vs limit',remaining==null?'—':Math.round(remaining)+' cal'],
-  ['Foods logged',rows.length],
+  ['Today’s deficit',remaining==null?'—':`${Math.round(Math.abs(remaining))} cal ${remaining<0?'surplus':''}`],
+  ['Today’s expected change',dailyLb==null?'—':lossText(dailyLb)],
+  ['Competition deficit',limit?`${Math.round(competitionDeficit)} cal`:'—'],
+  ['Expected loss to date',expectedLoss==null?'—':lossText(expectedLoss)],
+  ['Actual scale loss',actualLoss==null?'—':lossText(actualLoss)],
+  ['Projected weekly loss',weeklyProjection==null?'—':lossText(weeklyProjection)],
   ['Protein',num(protein,1)+' g'],
   ['Carbs',num(carbs,1)+' g'],
   ['Fat',num(fat,1)+' g'],
   ['Fiber',num(fiber,1)+' g']
- ].map(x=>`<div class="mini-stat"><span class="muted">${x[0]}</span><strong>${x[1]}</strong></div>`).join('')+`<div class="calorie-progress"><div class="calorie-progress-head"><b>Daily net calorie progress</b><strong>${statusText}</strong></div><div class="calorie-progress-bar"><div class="calorie-progress-fill ${fillClass}" style="width:${limit?pct:0}%"></div></div><div class="calorie-goal-note">${limit?`${Math.round(total)} food − ${Math.round(burned)} workout = ${Math.round(netCalories)} net calories against a ${Math.round(limit)} calorie limit`:'Tap “Set Calorie Limit” to create a daily target for this participant.'}</div></div><div class="deficit-note"><b>Important:</b> If your TDEE activity level already includes this workout, subtracting workout calories may count activity twice. For a true daily energy deficit, use a sedentary/light TDEE baseline or treat this number as a net-calorie tracking estimate.</div>`;
+ ].map(x=>`<div class="mini-stat"><span class="muted">${x[0]}</span><strong>${x[1]}</strong></div>`).join('')+`<div class="calorie-progress"><div class="calorie-progress-head"><b>Daily net calorie progress</b><strong>${statusText}</strong></div><div class="calorie-progress-bar"><div class="calorie-progress-fill ${fillClass}" style="width:${limit?pct:0}%"></div></div><div class="calorie-goal-note">${limit?`${Math.round(total)} food − ${Math.round(burned)} workout = ${Math.round(netCalories)} net calories against a ${Math.round(limit)} calorie limit. Estimated change: ${lossText(dailyLb)} for this day.`:'Tap “Set Calorie Limit” to create a daily target for this participant.'}</div></div>${limit?`<div class="calorie-progress"><div class="calorie-progress-head"><b>Competition projection</b><strong>${expectedLoss==null?'—':lossText(expectedLoss)} expected</strong></div><div class="calorie-goal-note">Based on ${loggedDeficits.length} logged day${loggedDeficits.length===1?'':'s'} through ${fmtDate(logDate)}: ${Math.round(competitionDeficit)} cumulative calories ÷ 3,500 = ${lossText(expectedLoss)}. Actual scale change is ${actualLoss==null?'not available yet':lossText(actualLoss)}${expectedVsActual==null?'':`; actual is ${Math.abs(expectedVsActual).toFixed(2)} lb ${expectedVsActual>=0?'more':'less'} than the calorie estimate`}.</div></div>`:''}<div class="deficit-note"><b>Estimate only:</b> The 3,500-calorie-per-pound rule is a planning approximation. Water, glycogen, digestion, sodium, and metabolic adaptation can make scale weight differ substantially. Also, if the TDEE activity level already includes a workout, subtracting workout calories separately may double-count some activity.</div>`;
  const workoutHtml=`<div class="workout-block"><div class="workout-head"><h3 style="margin:0">🔥 Workouts</h3><b>${Math.round(burned)} cal burned</b></div>${workoutRows.length?workoutRows.map(x=>`<div class="workout-item"><div><b>${esc(x.workout_type)}</b><small>${Number(x.duration_minutes||0)?Math.round(Number(x.duration_minutes))+' min':''}${Number(x.distance||0)?' · '+num(x.distance,2)+' mi':''}${x.notes?' · '+esc(x.notes):''}</small></div><div class="burned">${Math.round(Number(x.calories_burned||0))} cal</div><button class="red compact" onclick="deleteWorkoutLog('${x.id}')">Delete</button></div>`).join(''):'<div class="food-empty">No workouts logged.</div>'}</div>`;
  day.innerHTML=workoutHtml+meals.map(meal=>{
   const items=rows.filter(x=>x.meal_type===meal);
