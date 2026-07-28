@@ -366,6 +366,36 @@ function entryCompetitionForDefault(){
  const active=competitions.filter(c=>String(c.status||'').toLowerCase()==='active');
  return active.find(c=>defaultParticipantForCompetition(c.id))||active[0]||currentCompetition();
 }
+function resolveEntryContext({participantId='',competitionId='',requireActive=true}={}){
+ const isAdmin=adminModeEnabled();
+ let competition=null,participant=null;
+ if(isAdmin&&participantId){
+  participant=participants.find(p=>p.id===participantId)||null;
+  if(participant)competition=competitions.find(c=>c.id===participant.competition_id)||null;
+ }
+ if(!competition&&competitionId)competition=competitions.find(c=>c.id===competitionId)||null;
+ if(!competition){
+  const selected=currentCompetition();
+  if(selected&&(!requireActive||String(selected.status||'').toLowerCase()==='active'))competition=selected;
+ }
+ if(!competition&&!isAdmin)competition=entryCompetitionForDefault();
+ if(!competition)return null;
+ if(requireActive&&String(competition.status||'').toLowerCase()!=='active')return null;
+ if(!isAdmin){
+  participant=defaultParticipantForCompetition(competition.id);
+  if(!participant){
+   const fallback=entryCompetitionForDefault();
+   if(fallback&&fallback.id!==competition.id){
+    competition=fallback;
+    participant=defaultParticipantForCompetition(competition.id);
+   }
+  }
+ }else if(!participant){
+  participant=participants.find(p=>p.id===participantId&&p.competition_id===competition.id)||null;
+ }
+ if(!participant)return null;
+ return {participantId:participant.id,memberId:participant.member_id,participant,competitionId:competition.id,competition};
+}
 function peopleForCompetition(competitionId){return orderedParticipants(participants.filter(p=>p.competition_id===competitionId).map(calc))}
 function openWeighinFromProgress(){
  const memberId=el('progressMember')?.value,viewCompetitionId=el('progressCompetition')?.value;
@@ -476,10 +506,14 @@ function openWorkoutLog(){
  el('xDate').value=el('foodDateFilter')?.value||new Date().toISOString().slice(0,10);el('xType').value='Running';el('xDuration').value='';el('xCalories').value='';el('xDistance').value='';el('xNotes').value='';el('workoutModal').classList.remove('hidden');
 }
 async function saveWorkoutLog(){
- let participantId=el('xParticipant').value;const people=foodEligibleParticipants();if(!adminModeEnabled()){const forced=entryParticipantId(people,'');if(!forced)return alert('Your saved default participant could not be matched to this competition.');participantId=forced;el('xParticipant').value=forced}
- const row={participant_id:participantId,workout_date:el('xDate').value,workout_type:el('xType').value,duration_minutes:Number(el('xDuration').value)||null,calories_burned:Number(el('xCalories').value),distance:Number(el('xDistance').value)||null,notes:el('xNotes').value.trim()||null};
- if(!row.participant_id||!row.workout_date||!row.workout_type||!Number.isFinite(row.calories_burned)||row.calories_burned<=0)return alert('Enter participant, date, workout type, and calories burned.');
- const p=participants.find(x=>x.id===row.participant_id),c=competitions.find(x=>x.id===p?.competition_id),dates=competitionDates(c);if(dates.start&&row.workout_date<dates.start)return alert('Workout date must be on or after the BLC start date.');if(dates.end&&row.workout_date>dates.end)return alert('Workout date must be on or before the BLC end date.');
+ const selectedParticipantId=el('xParticipant').value;
+ const selectedParticipant=participants.find(p=>p.id===selectedParticipantId);
+ const context=resolveEntryContext({participantId:selectedParticipantId,competitionId:selectedParticipant?.competition_id||selectedCompetitionId,requireActive:true});
+ if(!context)return alert(adminModeEnabled()?'Select a participant in an active competition.':'Your saved default participant could not be matched to an active competition. Open My Profile and select your name again.');
+ el('xParticipant').value=context.participantId;
+ const row={participant_id:context.participantId,competition_id:context.competitionId,workout_date:el('xDate').value,workout_type:el('xType').value,duration_minutes:Number(el('xDuration').value)||null,calories_burned:Number(el('xCalories').value),distance:Number(el('xDistance').value)||null,distance_unit:'mi',notes:el('xNotes').value.trim()||null};
+ if(!row.participant_id||!row.competition_id||!row.workout_date||!row.workout_type||!Number.isFinite(row.calories_burned)||row.calories_burned<=0)return alert('Enter participant, date, workout type, and calories burned.');
+ const dates=competitionDates(context.competition);if(dates.start&&row.workout_date<dates.start)return alert('Workout date must be on or after the BLC start date.');if(dates.end&&row.workout_date>dates.end)return alert('Workout date must be on or before the BLC end date.');
  const r=await sb.from('blc_workout_logs').insert(row);if(r.error)return alert(r.error.message);closeModal('workoutModal');await loadAll();showTab('foodlog');
 }
 async function deleteWorkoutLog(id){if(!confirm('Delete this workout entry?'))return;const r=await sb.from('blc_workout_logs').delete().eq('id',id);if(r.error)return alert(r.error.message);loadAll()}
