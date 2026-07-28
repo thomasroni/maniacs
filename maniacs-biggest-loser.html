@@ -728,9 +728,11 @@ function savedFoodCandidates(query,words){
    }
   };
   food._nutrition=scaleNutrition(food._nutritionPer100,grams);
-  food._matchScore=foodMatchScore(food,query,words)+250;
+  const baseMatchScore=foodMatchScore(food,query,words);
+  if(baseMatchScore<0)return;
+  food._matchScore=baseMatchScore+250;
   const key=normalizeFoodSearchText(description)+'|'+normalizeFoodSearchText(food.brandOwner);
-  if(food._matchScore>=0&&!unique.has(key))unique.set(key,food);
+  if(!unique.has(key))unique.set(key,food);
  });
  return [...unique.values()];
 }
