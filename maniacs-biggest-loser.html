@@ -667,19 +667,51 @@ function usdaServing(food,kcal100){
  }
  return {text:'100 g',calories:Math.round(kcal100)};
 }
+function normalizeFoodSearchText(value){
+ return String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+}
+function foodSearchWords(query){
+ return [...new Set(normalizeFoodSearchText(query).split(/\s+/).filter(word=>word.length>1))];
+}
+function foodSearchHaystack(food){
+ return normalizeFoodSearchText([
+  food.description,food.brandOwner,food.brandName,food.additionalDescriptions,
+  food.ingredients,food.dataType,food.marketCountry
+ ].filter(Boolean).join(' '));
+}
+function foodMatchScore(food,query,words){
+ const description=normalizeFoodSearchText(food.description);
+ const haystack=foodSearchHaystack(food);
+ const phrase=normalizeFoodSearchText(query);
+ if(!words.every(word=>haystack.includes(word)))return -1;
+ let score=0;
+ if(description===phrase)score+=1000;
+ if(description.startsWith(phrase))score+=500;
+ if(description.includes(phrase))score+=300;
+ if(haystack.includes(phrase))score+=150;
+ words.forEach(word=>{
+  if(description.split(' ').includes(word))score+=35;
+  else if(description.includes(word))score+=20;
+  else score+=8;
+ });
+ score-=Math.min(description.length,200)/100;
+ return score;
+}
 async function searchUsdaFoods(){
  const q=el('fFood')?.value.trim()||'';
  if(q.length<2)return;
+ const words=foodSearchWords(q);
+ if(!words.length)return;
  if(foodSearchController)foodSearchController.abort();
  foodSearchController=new AbortController();
- el('foodSearchStatus').textContent='Searching USDA FoodData Central…';
+ el('foodSearchStatus').textContent=`Searching all words: ${words.join(' + ')}…`;
  el('foodSearchResults').innerHTML='';
  try{
   const url='https://api.nal.usda.gov/fdc/v1/foods/search?api_key='+encodeURIComponent(USDA_API_KEY);
   const response=await fetch(url,{
    method:'POST',
    headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({query:q,pageSize:12,dataType:['Foundation','SR Legacy','Survey (FNDDS)','Branded']}),
+   body:JSON.stringify({query:q,pageSize:50,dataType:['Foundation','SR Legacy','Survey (FNDDS)','Branded']}),
    signal:foodSearchController.signal
   });
   if(!response.ok)throw new Error('USDA search failed ('+response.status+')');
@@ -689,13 +721,15 @@ async function searchUsdaFoods(){
    const serving=usdaServing(food,kcal100);
    const grams=(Number(food.servingSize)>0&&['g','gram','grams'].includes(String(food.servingSizeUnit||'').toLowerCase()))?Number(food.servingSize):100;
    const nutrition=scaleNutrition(usdaNutritionPer100(food),grams);
-   return {...food,_kcal100:kcal100,_servingText:serving.text,_servingCalories:serving.calories,_servingGrams:grams,_nutrition:nutrition,_nutritionPer100:usdaNutritionPer100(food)};
-  }).filter(food=>food._kcal100>0);
+   return {...food,_matchScore:foodMatchScore(food,q,words),_kcal100:kcal100,_servingText:serving.text,_servingCalories:serving.calories,_servingGrams:grams,_nutrition:nutrition,_nutritionPer100:usdaNutritionPer100(food)};
+  }).filter(food=>food._kcal100>0&&food._matchScore>=0)
+    .sort((a,b)=>b._matchScore-a._matchScore)
+    .slice(0,20);
   if(!usdaFoodResults.length){
-   el('foodSearchStatus').textContent='No calorie matches found. Try a simpler food name or enter calories manually.';
+   el('foodSearchStatus').textContent=`No foods contained every word in “${q}”. Try removing one word or enter calories manually.`;
    return;
   }
-  el('foodSearchStatus').textContent=`Select the closest match (${usdaFoodResults.length} found).`;
+  el('foodSearchStatus').textContent=`Showing ${usdaFoodResults.length} matches containing all words, in any order.`;
   el('foodSearchResults').innerHTML=usdaFoodResults.map((food,index)=>{
    const brand=food.brandOwner||food.brandName||food.additionalDescriptions||food.dataType||'USDA';
    return `<div class="food-result" onclick="selectUsdaFood(${index})"><div><b>${esc(food.description||'Food')}</b><small>${esc(brand)} · ${esc(food._servingText)}</small></div><div class="food-result-cal">${food._servingCalories} cal</div></div>`;
