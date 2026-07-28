@@ -773,6 +773,47 @@ function mergeFoodCandidates(items){
  });
  return [...map.values()].sort((a,b)=>(b._matchScore-a._matchScore)||(b._sourcePriority-a._sourcePriority)).slice(0,30);
 }
+async function fetchOpenFoodFactsLegacy(q,signal){
+ const url='https://world.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(q)+'&search_simple=1&action=process&json=1&page_size=50&fields=code,product_name,product_name_en,brands,quantity,serving_size,serving_quantity,nutriments';
+ const response=await fetch(url,{signal,mode:'cors',cache:'no-store'});
+ if(!response.ok)throw new Error('Open Food Facts legacy search returned HTTP '+response.status);
+ const data=await response.json();
+ return data.products||[];
+}
+async function fetchOpenFoodFactsStructured(q,words,signal){
+ const fields='code,product_name,product_name_en,brands,quantity,serving_size,serving_quantity,nutriments';
+ const searches=[];
+ const terms=[q,...words].map(x=>String(x||'').trim()).filter(Boolean);
+ const seenTerms=new Set();
+ for(const term of terms){
+  const key=normalizeFoodSearchText(term);if(!key||seenTerms.has(key))continue;seenTerms.add(key);
+  const categoryUrl='https://world.openfoodfacts.org/api/v2/search?categories_tags_en='+encodeURIComponent(term)+'&page_size=40&fields='+encodeURIComponent(fields);
+  searches.push(fetch(categoryUrl,{signal,mode:'cors',cache:'no-store'}).then(async r=>{if(!r.ok)throw new Error('category HTTP '+r.status);return r.json()}));
+  const brandUrl='https://world.openfoodfacts.org/api/v2/search?brands_tags='+encodeURIComponent(term)+'&page_size=25&fields='+encodeURIComponent(fields);
+  searches.push(fetch(brandUrl,{signal,mode:'cors',cache:'no-store'}).then(async r=>{if(!r.ok)throw new Error('brand HTTP '+r.status);return r.json()}));
+ }
+ const settled=await Promise.allSettled(searches);
+ const products=[];
+ settled.forEach(result=>{if(result.status==='fulfilled')products.push(...(result.value.products||[]))});
+ if(!products.length&&settled.length&&settled.every(x=>x.status==='rejected'))throw new Error('Open Food Facts structured search was unavailable');
+ const unique=new Map();
+ products.forEach(p=>{const key=String(p.code||'')||normalizeFoodSearchText((p.product_name||p.product_name_en||'')+'|'+(p.brands||''));if(key&&!unique.has(key))unique.set(key,p)});
+ return [...unique.values()];
+}
+async function fetchOpenFoodFactsProducts(q,words,signal){
+ let legacyError=null;
+ try{
+  const legacy=await fetchOpenFoodFactsLegacy(q,signal);
+  if(legacy.length)return {products:legacy,route:'full-text'};
+ }catch(error){legacyError=error}
+ try{
+  const structured=await fetchOpenFoodFactsStructured(q,words,signal);
+  return {products:structured,route:'category/brand fallback',legacyError};
+ }catch(error){
+  const combined=new Error((legacyError?.message?legacyError.message+'; ':'')+error.message);
+  combined.name=error.name;throw combined;
+ }
+}
 async function searchUsdaFoods(){
  const q=el('fFood')?.value.trim()||'';
  if(q.length<2)return;
@@ -785,10 +826,9 @@ async function searchUsdaFoods(){
  const saved=savedFoodCandidates(q,words);
  try{
   const usdaUrl='https://api.nal.usda.gov/fdc/v1/foods/search?api_key='+encodeURIComponent(USDA_API_KEY);
-  const offUrl='https://world.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(q)+'&search_simple=1&action=process&json=1&page_size=50&fields=code,product_name,product_name_en,brands,quantity,serving_size,serving_quantity,nutriments';
   const [usdaResult,offResult]=await Promise.allSettled([
-   fetch(usdaUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q,pageSize:50,dataType:['Foundation','SR Legacy','Survey (FNDDS)','Branded']}),signal:foodSearchController.signal}).then(async r=>{if(!r.ok)throw new Error('USDA '+r.status);return r.json()}),
-   fetch(offUrl,{signal:foodSearchController.signal}).then(async r=>{if(!r.ok)throw new Error('Open Food Facts '+r.status);return r.json()})
+   fetch(usdaUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q,pageSize:50,dataType:['Foundation','SR Legacy','Survey (FNDDS)','Branded']}),signal:foodSearchController.signal}).then(async r=>{if(!r.ok)throw new Error('USDA returned HTTP '+r.status);return r.json()}),
+   fetchOpenFoodFactsProducts(q,words,foodSearchController.signal)
   ]);
   const usda=usdaResult.status==='fulfilled'?(usdaResult.value.foods||[]).map(food=>{
    const kcal100=usdaEnergy(food);const serving=usdaServing(food,kcal100);
@@ -798,14 +838,22 @@ async function searchUsdaFoods(){
   }).filter(food=>food._kcal100>0&&food._matchScore>=0):[];
   const off=offResult.status==='fulfilled'?(offResult.value.products||[]).map(p=>normalizeOpenFoodFactsProduct(p,q,words)).filter(Boolean):[];
   usdaFoodResults=mergeFoodCandidates([...saved,...usda,...off]);
-  if(!usdaFoodResults.length){el('foodSearchStatus').textContent=`No source contained every word in “${q}”. Try fewer words or enter calories manually.`;return}
+  if(!usdaFoodResults.length){
+   const problems=[];
+   if(usdaResult.status==='rejected')problems.push('USDA unavailable');
+   if(offResult.status==='rejected')problems.push('Open Food Facts unavailable');
+   el('foodSearchStatus').textContent=`No source contained every word in “${q}”.${problems.length?' '+problems.join(' · ')+'.':''} Try fewer words or enter calories manually.`;
+   return;
+  }
   const counts=usdaFoodResults.reduce((a,f)=>(a[f._source]=(a[f._source]||0)+1,a),{});
-  el('foodSearchStatus').textContent=`Showing ${usdaFoodResults.length} combined matches · Saved ${counts.saved||0} · USDA ${counts.usda||0} · Open Food Facts ${counts.off||0}.`;
+  const sourceNotes=[];
+  sourceNotes.push(usdaResult.status==='fulfilled'?`USDA ${counts.usda||0}`:`USDA unavailable (${esc(usdaResult.reason?.message||'network error')})`);
+  sourceNotes.push(offResult.status==='fulfilled'?`Open Food Facts ${counts.off||0} via ${offResult.value.route}`:`Open Food Facts unavailable (${esc(offResult.reason?.message||'network/CORS error')})`);
+  el('foodSearchStatus').innerHTML=`Showing ${usdaFoodResults.length} combined matches · Saved ${counts.saved||0} · ${sourceNotes.join(' · ')}.`;
   el('foodSearchResults').innerHTML=usdaFoodResults.map((food,index)=>{
    const brand=food.brandOwner||food.brandName||food.additionalDescriptions||food.dataType||food._sourceLabel;
    return `<div class="food-result" onclick="selectUsdaFood(${index})"><div><b><span class="food-source ${food._source}">${esc(food._sourceLabel)}</span>${esc(food.description||'Food')}</b><small>${esc(brand)} · ${esc(food._servingText)}</small></div><div class="food-result-cal">${food._servingCalories} cal</div></div>`;
   }).join('');
-  if(usdaResult.status==='rejected'||offResult.status==='rejected')el('foodSearchStatus').textContent+=' One external source was temporarily unavailable.';
  }catch(error){
   if(error.name==='AbortError')return;
   console.error(error);
