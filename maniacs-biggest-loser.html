@@ -642,35 +642,68 @@ async function removeCalorieGoal(){
  closeModal('calorieGoalModal');await loadAll();
 }
 function cleanBarcode(value){return String(value||'').replace(/[^0-9]/g,'').trim()}
+async function requestCameraPermission(){
+ if(!navigator.mediaDevices?.getUserMedia)throw new Error('Camera API is not available in this browser.');
+ const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+ stream.getTracks().forEach(track=>track.stop());
+}
+async function getPreferredCameraId(){
+ const cameras=await Html5Qrcode.getCameras();
+ if(!cameras?.length)throw new Error('No camera was found.');
+ const rear=cameras.find(c=>/back|rear|environment|world/i.test(c.label));
+ return (rear||cameras[cameras.length-1]||cameras[0]).id;
+}
+async function startBarcodeCamera(cameraConfig){
+ const boxWidth=Math.min(320,Math.max(220,window.innerWidth-72));
+ const config={fps:10,qrbox:{width:boxWidth,height:Math.round(boxWidth*.48)},aspectRatio:1.333,disableFlip:false,experimentalFeatures:{useBarCodeDetectorIfSupported:true}};
+ await barcodeScanner.start(cameraConfig,config,async decodedText=>{
+  if(barcodeScanBusy)return;
+  const code=cleanBarcode(decodedText);
+  if(code.length<8)return;
+  barcodeScanBusy=true;
+  el('barcodeManual').value=code;
+  el('barcodeStatus').textContent=`Barcode ${code} detected. Looking up nutrition…`;
+  await lookupFoodBarcode(code);
+ },()=>{});
+}
 async function openBarcodeScanner(){
  el('barcodeModal').classList.remove('hidden');
  el('barcodeProduct').classList.add('hidden');
  el('barcodeProduct').innerHTML='';
  el('barcodeScanAgain').classList.add('hidden');
- el('barcodeStatus').textContent='Starting camera…';
+ el('barcodeStatus').textContent='Requesting camera permission…';
  barcodeScanBusy=false;
- if(!window.Html5Qrcode){el('barcodeStatus').textContent='Barcode scanner library did not load. Enter the barcode number manually.';return}
+ if(!window.isSecureContext){el('barcodeStatus').textContent='Camera scanning requires HTTPS. Open the deployed GitHub Pages site, or enter the barcode manually.';el('barcodeScanAgain').classList.remove('hidden');return}
+ if(!window.Html5Qrcode){el('barcodeStatus').textContent='Barcode scanner library did not load. Refresh the page or enter the barcode manually.';return}
  try{
   if(barcodeScanner){try{if(barcodeScanner.isScanning)await barcodeScanner.stop()}catch(_e){}try{await barcodeScanner.clear()}catch(_e){}}
+  await requestCameraPermission();
   barcodeScanner=new Html5Qrcode('barcodeReader',{formatsToSupport:[
    Html5QrcodeSupportedFormats.UPC_A,Html5QrcodeSupportedFormats.UPC_E,Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.CODE_128
   ],verbose:false});
-  const boxWidth=Math.min(320,Math.max(220,window.innerWidth-72));
-  const config={fps:15,qrbox:{width:boxWidth,height:Math.round(boxWidth*.48)},aspectRatio:1.35,disableFlip:false,experimentalFeatures:{useBarCodeDetectorIfSupported:true}};
-  await barcodeScanner.start({facingMode:{ideal:'environment'}},config,async decodedText=>{
-   if(barcodeScanBusy)return;
-   const code=cleanBarcode(decodedText);
-   if(code.length<8)return;
-   barcodeScanBusy=true;
-   el('barcodeManual').value=code;
-   el('barcodeStatus').textContent=`Barcode ${code} detected. Looking up nutrition…`;
-   // Do not pause Html5Qrcode here. On iPhone, pause() often leaves the camera in a permanent "Scanner paused" state.
-   await lookupFoodBarcode(code);
-  },()=>{});
+  let started=false,lastError=null;
+  try{
+   const cameraId=await getPreferredCameraId();
+   await startBarcodeCamera(cameraId);
+   started=true;
+  }catch(e){lastError=e;console.warn('Camera ID start failed, trying facingMode fallback',e)}
+  if(!started){
+   try{await startBarcodeCamera({facingMode:'environment'});started=true}catch(e){lastError=e;console.warn('Rear camera fallback failed',e)}
+  }
+  if(!started){
+   try{await startBarcodeCamera({facingMode:'user'});started=true}catch(e){lastError=e;console.warn('Front camera fallback failed',e)}
+  }
+  if(!started)throw lastError||new Error('Unable to start a camera.');
   el('barcodeStatus').textContent='Camera ready. Fill most of the box with the barcode and hold steady.';
  }catch(error){
   console.error(error);
-  el('barcodeStatus').textContent='Camera could not start. Check camera permission, use HTTPS, or enter the barcode manually.';
+  const name=String(error?.name||'');
+  const message=String(error?.message||error||'');
+  let help='Camera could not start. Enter the barcode manually.';
+  if(/NotAllowed|Permission|denied/i.test(name+' '+message))help='Camera permission is blocked. On iPhone go to Settings → Safari → Camera → Ask or Allow, then reload this page.';
+  else if(/NotFound|no camera/i.test(name+' '+message))help='No usable camera was found. Try opening the site directly in Safari rather than inside WhatsApp or another in-app browser.';
+  else if(/NotReadable|Abort|busy|in use/i.test(name+' '+message))help='The camera is busy. Close other camera apps or browser tabs, then tap Scan Again.';
+  el('barcodeStatus').textContent=help;
   el('barcodeScanAgain').classList.remove('hidden');
  }
 }
