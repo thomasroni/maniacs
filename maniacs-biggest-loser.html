@@ -214,7 +214,7 @@
 <div id="barcodeModal" class="modal hidden"><div class="modalbox barcode-scanner-box">
   <div class="section-title"><div><h2>Scan Food Barcode</h2><span class="muted">Point the rear camera at a UPC, EAN, or QR product barcode.</span></div><button class="light compact" onclick="closeBarcodeScanner()">✕ Close</button></div>
   <div id="barcodeReader" class="barcode-reader"></div>
-  <div class="barcode-manual"><input id="barcodeManual" inputmode="numeric" autocomplete="off" placeholder="Or enter barcode number"><button onclick="lookupBarcodeFromInput()">Look Up</button></div>
+  <div class="barcode-manual"><input id="barcodeManual" inputmode="numeric" autocomplete="off" placeholder="Or enter barcode number"><button onclick="lookupBarcodeFromInput()">Look Up</button></div><div class="toolbar" style="margin-top:10px"><button id="barcodeScanAgain" class="light compact hidden" onclick="restartBarcodeScanner()">Scan Again</button></div>
   <div id="barcodeStatus" class="barcode-status">Camera access requires HTTPS and permission to use the camera.</div>
   <div id="barcodeProduct" class="barcode-product hidden"></div>
 </div></div>
@@ -646,27 +646,40 @@ async function openBarcodeScanner(){
  el('barcodeModal').classList.remove('hidden');
  el('barcodeProduct').classList.add('hidden');
  el('barcodeProduct').innerHTML='';
+ el('barcodeScanAgain').classList.add('hidden');
  el('barcodeStatus').textContent='Starting camera…';
  barcodeScanBusy=false;
  if(!window.Html5Qrcode){el('barcodeStatus').textContent='Barcode scanner library did not load. Enter the barcode number manually.';return}
  try{
-  if(barcodeScanner){try{await barcodeScanner.stop()}catch(_e){}try{await barcodeScanner.clear()}catch(_e){}}
-  barcodeScanner=new Html5Qrcode('barcodeReader');
-  const config={fps:10,qrbox:{width:280,height:150},aspectRatio:1.5,formatsToSupport:[
-   Html5QrcodeSupportedFormats.UPC_A,Html5QrcodeSupportedFormats.UPC_E,Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.QR_CODE
-  ]};
-  await barcodeScanner.start({facingMode:'environment'},config,async decodedText=>{
-   if(barcodeScanBusy)return;barcodeScanBusy=true;
-   const code=cleanBarcode(decodedText)||decodedText.trim();
+  if(barcodeScanner){try{if(barcodeScanner.isScanning)await barcodeScanner.stop()}catch(_e){}try{await barcodeScanner.clear()}catch(_e){}}
+  barcodeScanner=new Html5Qrcode('barcodeReader',{formatsToSupport:[
+   Html5QrcodeSupportedFormats.UPC_A,Html5QrcodeSupportedFormats.UPC_E,Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.CODE_128
+  ],verbose:false});
+  const boxWidth=Math.min(320,Math.max(220,window.innerWidth-72));
+  const config={fps:15,qrbox:{width:boxWidth,height:Math.round(boxWidth*.48)},aspectRatio:1.35,disableFlip:false,experimentalFeatures:{useBarCodeDetectorIfSupported:true}};
+  await barcodeScanner.start({facingMode:{ideal:'environment'}},config,async decodedText=>{
+   if(barcodeScanBusy)return;
+   const code=cleanBarcode(decodedText);
+   if(code.length<8)return;
+   barcodeScanBusy=true;
    el('barcodeManual').value=code;
-   try{await barcodeScanner.pause(true)}catch(_e){}
+   el('barcodeStatus').textContent=`Barcode ${code} detected. Looking up nutrition…`;
+   // Do not pause Html5Qrcode here. On iPhone, pause() often leaves the camera in a permanent "Scanner paused" state.
    await lookupFoodBarcode(code);
   },()=>{});
-  el('barcodeStatus').textContent='Camera ready. Hold the barcode steady inside the box.';
+  el('barcodeStatus').textContent='Camera ready. Fill most of the box with the barcode and hold steady.';
  }catch(error){
   console.error(error);
   el('barcodeStatus').textContent='Camera could not start. Check camera permission, use HTTPS, or enter the barcode manually.';
+  el('barcodeScanAgain').classList.remove('hidden');
  }
+}
+async function restartBarcodeScanner(){
+ try{if(barcodeScanner&&barcodeScanner.isScanning)await barcodeScanner.stop()}catch(_e){}
+ try{barcodeScanner&&await barcodeScanner.clear()}catch(_e){}
+ barcodeScanner=null;barcodeScanBusy=false;
+ el('barcodeReader').innerHTML='';
+ await openBarcodeScanner();
 }
 async function closeBarcodeScanner(){
  if(barcodeScanner){try{await barcodeScanner.stop()}catch(_e){}try{await barcodeScanner.clear()}catch(_e){}barcodeScanner=null}
@@ -705,12 +718,12 @@ async function lookupFoodBarcode(rawCode){
  }catch(offError){
   try{food=await fetchUsdaBarcode(code);source='USDA'}catch(usdaError){console.warn(offError,usdaError)}
  }
- if(!food){el('barcodeStatus').textContent=`No nutrition record was found for barcode ${code}. You can type the food name and calories manually.`;barcodeScanBusy=false;try{barcodeScanner&&barcodeScanner.resume()}catch(_e){}return}
+ if(!food){el('barcodeStatus').textContent=`No nutrition record was found for barcode ${code}. Keep scanning another product or enter the barcode manually.`;barcodeScanBusy=false;el('barcodeScanAgain').classList.remove('hidden');return}
  selectedUsdaFood=food;usdaFoodResults=[food];
  el('fFood').value=food.description||'Barcode product';el('fServingAmount').value='1';el('fServingUnit').value='serving';recalculateFoodServing();
  const brand=food.brandOwner||food.brandName||'Unknown brand';
  el('foodSearchStatus').textContent=`Barcode ${code} selected from ${source}: ${brand}. Review serving and nutrition before saving.`;
- el('barcodeStatus').textContent='Product found. Nutrition has been filled into the food form.';
+ el('barcodeStatus').textContent='Product found. Nutrition has been filled into the food form.';el('barcodeScanAgain').classList.add('hidden');
  el('barcodeProduct').innerHTML=`<b>${esc(food.description||'Product')}</b><br>${esc(brand)} · ${esc(food._servingText||'serving')} · <b>${food._servingCalories} cal</b>`;
  el('barcodeProduct').classList.remove('hidden');
  setTimeout(closeBarcodeScanner,700);
