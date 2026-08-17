@@ -2754,6 +2754,16 @@ function renderStats(){
   ].map(([l,n])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
 }
 
+
+function dateCounts(){
+  return (settings.dates||[]).map(date=>{
+    const families=activeResponses().filter(r=>(r.dates||[]).includes(date));
+    const count=families.reduce((sum,r)=>
+      sum+(Number(r.adults)||0)+(Number(r.kids3to10)||0),0);
+    return {date,count};
+  });
+}
+
 function participationByDate(){
   return dateCounts()
     .map(x=>({
@@ -3458,6 +3468,20 @@ status.title="Tap to retry database connection";
 
 
 // Start the database connection first so UI rendering cannot block Supabase initialization.
+const requiredHelpers=[
+  ["activeResponses",typeof activeResponses],
+  ["dateCounts",typeof dateCounts],
+  ["participationByDate",typeof participationByDate],
+  ["renderBestDateSummary",typeof renderBestDateSummary],
+  ["renderStats",typeof renderStats]
+];
+const missingHelpers=requiredHelpers.filter(([,t])=>t!=="function").map(([n])=>n);
+if(missingHelpers.length){
+  console.error("Missing app helpers:",missingHelpers);
+  setStatus("Startup error",false);
+  toast("Missing app function: "+missingHelpers.join(", "));
+}
+
 try{
   if(sb){
     setStatus("Syncing…");
