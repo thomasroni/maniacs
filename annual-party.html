@@ -1500,6 +1500,59 @@ footer{
   border:1px solid #f0dda9;
 }
 
+
+.event-selector{
+  width:auto!important;
+  min-width:118px;
+  max-width:155px;
+  padding:8px 9px!important;
+  border-radius:10px!important;
+  border:1px solid #dfe3e7!important;
+  background:#fff!important;
+  color:#333!important;
+  font-weight:750!important;
+  font-size:12px!important;
+}
+.history-event-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:14px;
+  margin:9px 0;
+  border:1px solid #e1e5e8;
+  border-radius:13px;
+  background:#fff;
+}
+.history-event-card.current{
+  border-color:#e0b84d;
+  background:#fffaf0;
+}
+.history-event-card strong{
+  display:block;
+  font-size:16px;
+  color:#24292f;
+}
+.history-event-card small{
+  display:block;
+  margin-top:4px;
+  color:#6b7280!important;
+}
+.history-year{
+  display:inline-block;
+  margin-bottom:5px;
+  padding:3px 8px;
+  border-radius:999px;
+  background:#d71920;
+  color:#fff;
+  font-size:11px;
+  font-weight:900;
+}
+@media(max-width:600px){
+  .event-selector{min-width:92px;max-width:105px;font-size:11px!important}
+  .history-event-card{align-items:flex-start}
+}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -1513,11 +1566,16 @@ if(!window.supabase){
   <header>
     <div class="headrow">
       <div class="brand"><div class="logo">M</div><div><h1>Maniacs Annual Holiday Party</h1><small id="eventSubtitle">RSVP • Date Poll • Venue Planner</small><small class="holidayTag">Celebrate Together ✨</small></div></div>
-      <div class="row"><span id="status" class="status">Connecting…</span><button class="btn sm ghost" id="adminBtn">Admin</button></div>
+      <div class="row">
+  <select id="eventSelector" class="event-selector" title="Choose Annual Party"></select>
+  <span id="status" class="status">Connecting…</span>
+  <button class="btn sm ghost" id="adminBtn">Admin</button>
+</div>
     </div>
     <div class="tabs">
       <button class="tab active" data-page="poll">Date Poll</button>
       <button class="tab" data-page="rsvp">RSVP</button>
+      <button class="tab" data-page="history">History</button>
       <button class="tab admin-only" data-page="venues">Venues</button>
       <button class="tab admin-only" data-page="dashboard">Dashboard</button>
     </div>
@@ -1574,7 +1632,20 @@ if(!window.supabase){
       </div>
     </section>
 
-    <section id="page-venues" class="page hidden admin-only">
+    
+    <section id="page-history" class="page hidden">
+      <div class="card">
+        <div class="between">
+          <div>
+            <h2>🗂️ Annual Party History</h2>
+            <div class="sub">View prior Maniacs annual parties, participation, pricing and collection results.</div>
+          </div>
+        </div>
+        <div id="historyCards"></div>
+      </div>
+    </section>
+
+<section id="page-venues" class="page hidden admin-only">
       <div class="card">
         <div class="between"><div><h2>🏛️ Venue Comparison</h2><div class="sub">Compare actual all-in cost, food, DJ/dance floor and availability.</div></div><button class="btn dark" id="addVenue">+ Add Venue</button></div>
         <div class="notice">Tip: enter the actual quote you receive from each venue. Availability should be recorded only after the venue confirms it.</div>
@@ -1584,7 +1655,12 @@ if(!window.supabase){
 
     <section id="page-dashboard" class="page hidden admin-only">
       <div class="card">
-        <div class="between"><div><h2>⚙️ Admin Dashboard</h2><div class="sub">Manage RSVPs and party planning.</div></div><div class="actions"><button class="btn ghost" id="eventSettings">Manage Dates</button><button class="btn ghost" id="pricingBtn">💵 Pricing</button><button class="btn primary" id="adminAdd">+ Participant</button></div></div>
+        <div class="between"><div><h2>⚙️ Admin Dashboard</h2><div class="sub">Manage RSVPs and party planning.</div></div><div class="actions">
+  <button class="btn ghost" id="newEventBtn">+ New Year Event</button>
+  <button class="btn ghost" id="eventSettings">Manage Dates</button>
+  <button class="btn ghost" id="pricingBtn">💵 Pricing</button>
+  <button class="btn primary" id="adminAdd">+ Participant</button>
+</div></div>
         <div class="stats" id="adminStats"></div>
       </div>
 
@@ -1778,55 +1854,71 @@ var foodFields = [
 ];
 
 let settings = structuredClone(DEFAULT_SETTINGS);
+let events = [];
+let currentEventId = null;
 let responses = [];
 let venues = [];
 let editingResponseId = null;
 let isAdmin = false;
 let syncing = false;
 
-async function loadAll(){
-  if(!sb){ setStatus("Library error",false); return; }
+async function loadAll(preferredEventId=null){
   setStatus("Syncing…");
   try{
-    const [sRes,rRes,vRes]=await Promise.all([
-      sb.from("party_settings").select("id,event_name,budget_per_person,adult_price,kid_price,candidate_dates,updated_at").eq("id",1).maybeSingle(),
-      sb.from("party_responses").select("*").order("updated_at",{ascending:false}),
-      sb.from("party_venues").select("*").order("name",{ascending:true})
+    const evRes=await sb.from("party_settings")
+      .select("id,event_year,event_name,event_status,budget_per_person,adult_price,kid_price,candidate_dates,updated_at")
+      .order("event_year",{ascending:false});
+
+    if(evRes.error) throw evRes.error;
+    events=evRes.data||[];
+
+    if(!events.length){
+      settings=structuredClone(DEFAULT_SETTINGS);
+      currentEventId=null;
+      responses=[];
+      venues=[];
+      renderAll();
+      setStatus("Connected");
+      return;
+    }
+
+    const preferred=preferredEventId!=null ? String(preferredEventId) : null;
+    const active=events.find(e=>e.event_status==="active");
+    const selected=
+      (preferred && events.find(e=>String(e.id)===preferred))
+      || (currentEventId && events.find(e=>String(e.id)===String(currentEventId)))
+      || active
+      || events[0];
+
+    currentEventId=selected.id;
+    settings={
+      eventName:selected.event_name||`Maniacs Annual Party ${selected.event_year||""}`.trim(),
+      eventYear:Number(selected.event_year||new Date().getFullYear()),
+      eventStatus:selected.event_status||"history",
+      budgetPerPerson:Number(selected.budget_per_person??50),
+      adultPrice:Number(selected.adult_price??50),
+      kidPrice:Number(selected.kid_price??25),
+      dates:Array.isArray(selected.candidate_dates)?[...selected.candidate_dates].sort():[]
+    };
+
+    const [rRes,vRes]=await Promise.all([
+      sb.from("party_responses").select("*").eq("event_id",currentEventId).order("updated_at",{ascending:false}),
+      sb.from("party_venues").select("*").eq("event_id",currentEventId).order("name",{ascending:true})
     ]);
 
-    if(sRes.error) throw sRes.error;
     if(rRes.error) throw rRes.error;
     if(vRes.error) throw vRes.error;
-
-    if(sRes.data){
-      settings={
-        eventName:sRes.data.event_name||DEFAULT_SETTINGS.eventName,
-        budgetPerPerson:Number(sRes.data.budget_per_person??50),
-        adultPrice:Number(sRes.data.adult_price??50),
-        kidPrice:Number(sRes.data.kid_price??25),
-        dates:Array.isArray(sRes.data.candidate_dates)?[...sRes.data.candidate_dates].sort():[]
-      };
-    }else{
-      settings=structuredClone(DEFAULT_SETTINGS);
-    }
 
     responses=(rRes.data||[]).map(dbResponseToUi);
     venues=(vRes.data||[]).map(dbVenueToUi);
 
-    // Database reads succeeded. Show connection state before rendering the UI.
+    ensureRsvpCounters();
+    renderAll();
     setStatus("Connected");
-    try {
-      renderAll();
-    } catch (renderError) {
-      console.error("Render after Supabase load failed", renderError);
-      toast("Connected to database, but part of the UI could not render");
-    }
   }catch(e){
-    console.error("Supabase load failed",e);
-    setStatus("Connection error",false);
-    const s=document.getElementById("status");
-    if(s) s.title=String(e.message||e);
-    toast("Database connection failed: "+(e.message||e));
+    console.error(e);
+    setStatus("Could not connect",false);
+    toast("Supabase sync failed: "+(e.message||e));
   }
 }
 
@@ -1840,6 +1932,7 @@ function setStatus(t,ok=true){
 function dbResponseToUi(r){
   return {
     id:r.id,
+    eventId:r.event_id,
     name:r.name,
     status:r.status,
     adults:Number(r.adults||0),
@@ -1861,6 +1954,7 @@ function dbResponseToUi(r){
 function uiResponseToDb(r){
   return {
     id:r.id,
+    event_id:currentEventId,
     name:r.name,
     status:r.status,
     adults:r.adults,
@@ -1881,6 +1975,7 @@ function uiResponseToDb(r){
 function dbVenueToUi(v){
   return {
     id:v.id,
+    eventId:v.event_id,
     name:v.name,
     location:v.location||"",
     capacity:Number(v.capacity||0),
@@ -1903,6 +1998,7 @@ function dbVenueToUi(v){
 function uiVenueToDb(v){
   return {
     id:v.id,
+    event_id:currentEventId,
     name:v.name,
     location:v.location||"",
     capacity:v.capacity||0,
@@ -2468,9 +2564,59 @@ function renderBestCombos(){
     <div class="grid3" style="margin-top:10px"><div><small>People feasible</small><b style="display:block">${x.count} (${x.pct}%)</b></div><div><small>Effective cost</small><b style="display:block">${money(x.pp)}/person</b></div><div><small>Venue score</small><b style="display:block">${x.score}/100</b></div></div>
   </div>`).join(""):`<div class="empty">Add venue availability to see date + venue recommendations.</div>`;
 }
+
+function renderEventSelector(){
+  const sel=document.getElementById("eventSelector");
+  if(!sel) return;
+  sel.innerHTML=events.map(e=>`<option value="${e.id}" ${String(e.id)===String(currentEventId)?"selected":""}>
+    ${e.event_year||""} ${e.event_status==="active"?"• Current":""}
+  </option>`).join("");
+}
+
+function eventHistoryStats(eventId){
+  return null; // History cards use currently-loaded event details only when selected.
+}
+
+function renderHistory(){
+  const box=document.getElementById("historyCards");
+  if(!box) return;
+  if(!events.length){
+    box.innerHTML='<div class="empty">No annual party history yet.</div>';
+    return;
+  }
+
+  box.innerHTML=events.map(e=>`
+    <div class="history-event-card ${String(e.id)===String(currentEventId)?"current":""}">
+      <div>
+        <span class="history-year">${e.event_year||"Year"}</span>
+        <strong>${esc(e.event_name||"Maniacs Annual Party")}</strong>
+        <small>${e.event_status==="active"?"Current event":"Archived event"} • Adult ${money(e.adult_price||0)} • Kids ${money(e.kid_price||0)}</small>
+      </div>
+      <button class="btn sm ${String(e.id)===String(currentEventId)?"ghost":"primary"}" onclick="openHistoryEvent('${e.id}')">
+        ${String(e.id)===String(currentEventId)?"Viewing":"View"}
+      </button>
+    </div>
+  `).join("");
+}
+
+window.openHistoryEvent=async(id)=>{
+  await loadAll(id);
+  showPage("poll");
+  toast("Loaded annual party "+(settings.eventYear||""));
+};
+
 function renderAll(){
   document.title=settings.eventName;
   eventSubtitle.textContent=settings.eventName;
+  renderEventSelector();
+  renderHistory();
+
+  const isActive=settings.eventStatus==="active";
+  const rsvpTab=document.querySelector('.tab[data-page="rsvp"]');
+  if(rsvpTab) rsvpTab.style.display=isActive?"":"none";
+  const saveBtn=document.getElementById("saveRsvp");
+  if(saveBtn) saveBtn.disabled=!isActive;
+
   renderDates();
   renderPoll();
   renderTopParticipationDate();
@@ -2483,6 +2629,12 @@ function showPage(page){
   document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x.dataset.page===page));
 }
 document.querySelectorAll(".tab").forEach(x=>x.onclick=()=>showPage(x.dataset.page));
+document.getElementById("eventSelector").onchange=async(e)=>{
+  await loadAll(e.target.value);
+  showPage("poll");
+};
+
+
 
 adminBtn.onclick=()=>{
   if(isAdmin){
@@ -2532,8 +2684,10 @@ window.removeAdminDate=async(d)=>{
     const {data,error}=await sb
       .from("party_settings")
       .upsert({
-        id:1,
+        id:currentEventId,
+        event_year:Number(settings.eventYear||new Date().getFullYear()),
         event_name:settings.eventName||DEFAULT_SETTINGS.eventName,
+        event_status:settings.eventStatus||"active",
         budget_per_person:Number(settings.budgetPerPerson||50),
         adult_price:Number(settings.adultPrice??50),
         kid_price:Number(settings.kidPrice??25),
@@ -2576,6 +2730,69 @@ function openDateManager(){
 }
 
 
+
+const newEventBtnEl=document.getElementById("newEventBtn");
+const createEventBtnEl=document.getElementById("createEventBtn");
+
+if(newEventBtnEl){
+  newEventBtnEl.onclick=()=>{
+    const nextYear=(events[0]?.event_year||new Date().getFullYear())+1;
+    newEventYear.value=nextYear;
+    newEventName.value=`Maniacs Annual Party ${nextYear}`;
+    newEventAdultPrice.value=Number(settings.adultPrice??50);
+    newEventKidPrice.value=Number(settings.kidPrice??25);
+    newEventDialog.showModal();
+  };
+}
+
+if(createEventBtnEl){
+  createEventBtnEl.onclick=async()=>{
+    const year=Number(newEventYear.value);
+    const name=newEventName.value.trim()||`Maniacs Annual Party ${year}`;
+    const adultPrice=Math.max(0,Number(newEventAdultPrice.value)||0);
+    const kidPrice=Math.max(0,Number(newEventKidPrice.value)||0);
+    if(!year) return toast("Enter a valid year");
+    if(events.some(e=>Number(e.event_year)===year)) return toast("An event already exists for "+year);
+
+    createEventBtnEl.disabled=true;
+    createEventBtnEl.textContent="Creating…";
+    setStatus("Creating event…");
+    try{
+      // Archive any currently active event.
+      const activeIds=events.filter(e=>e.event_status==="active").map(e=>e.id);
+      if(activeIds.length){
+        const ar=await sb.from("party_settings").update({event_status:"history",updated_at:new Date().toISOString()}).in("id",activeIds);
+        if(ar.error) throw ar.error;
+      }
+
+      const {data,error}=await sb.from("party_settings").insert({
+        event_year:year,
+        event_name:name,
+        event_status:"active",
+        budget_per_person:adultPrice,
+        adult_price:adultPrice,
+        kid_price:kidPrice,
+        candidate_dates:[],
+        updated_at:new Date().toISOString()
+      }).select("id").single();
+
+      if(error) throw error;
+      newEventDialog.close();
+      await loadAll(data.id);
+      showPage("dashboard");
+      setStatus("Connected");
+      toast(`${year} Annual Party created`);
+    }catch(e){
+      console.error(e);
+      setStatus("Save failed",false);
+      toast("Create event failed: "+(e.message||e));
+    }finally{
+      createEventBtnEl.disabled=false;
+      createEventBtnEl.textContent="Create Event";
+    }
+  };
+}
+
 const pricingBtnEl=document.getElementById("pricingBtn");
 const savePricingEl=document.getElementById("savePricing");
 const adminAdultPriceEl=document.getElementById("adminAdultPrice");
@@ -2609,7 +2826,7 @@ if(savePricingEl){
           kid_price:kidPrice,
           updated_at:new Date().toISOString()
         })
-        .eq("id",1)
+        .eq("id",currentEventId)
         .select("id,adult_price,kid_price")
         .single();
 
@@ -2649,8 +2866,10 @@ addPartyDateBtn.onclick=async()=>{
 
   try{
     const payload={
-      id:1,
+      id:currentEventId,
+      event_year:Number(settings.eventYear||new Date().getFullYear()),
       event_name:settings.eventName||DEFAULT_SETTINGS.eventName,
+      event_status:settings.eventStatus||"active",
       budget_per_person:Number(settings.budgetPerPerson||50),
       adult_price:Number(settings.adultPrice??50),
       kid_price:Number(settings.kidPrice??25),
@@ -2708,8 +2927,10 @@ saveSettings.onclick=async()=>{
     const {data,error}=await sb
       .from("party_settings")
       .upsert({
-        id:1,
+        id:currentEventId,
+        event_year:Number(settings.eventYear||new Date().getFullYear()),
         event_name:next.eventName,
+        event_status:settings.eventStatus||"active",
         budget_per_person:next.budgetPerPerson,
         adult_price:next.adultPrice,
         kid_price:next.kidPrice,
