@@ -2583,15 +2583,31 @@ function renderBestDateSummary(){
 }
 
 function renderStats(){
-  const t=totals();
-  const totalDue=activeResponses().reduce((s,r)=>s+familyAmount(r),0);
-  const totalPaid=activeResponses().filter(r=>r.paid).reduce((s,r)=>s+familyAmount(r),0);
+  const families=activeResponses();
+  const totalDue=families.reduce((s,r)=>s+familyAmount(r),0);
+  const totalPaid=families.filter(r=>r.paid).reduce((s,r)=>s+familyAmount(r),0);
+  const outstanding=Math.max(0,totalDue-totalPaid);
+  const paidFamilies=families.filter(r=>r.paid).length;
+  const unpaidFamilies=families.filter(r=>!r.paid).length;
+
   publicStats.innerHTML=[
-    ["People",t.people],["Adults",t.adults],["Kids",t.kids3to10],["Families",t.families],
-    ["Vegetarian",t.vegetarian],["Non-Veg",t.nonVegetarian],["Vegan",t.vegan],["Jain",t.jain],
-    ["Total Due",money(totalDue)],["Paid",money(totalPaid)]
+    ["Total Due",money(totalDue)],
+    ["Total Paid",money(totalPaid)],
+    ["Outstanding",money(outstanding)],
+    ["Paid Families",paidFamilies],
+    ["Unpaid Families",unpaidFamilies]
   ].map(([l,n])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
-  adminStats.innerHTML=publicStats.innerHTML;
+
+  const t=totals();
+  adminStats.innerHTML=[
+    ["Expected Pool",money(totalDue)],
+    ["Collected",money(totalPaid)],
+    ["Outstanding",money(outstanding)],
+    ["Families",t.families],
+    ["People",t.people],
+    ["Adults",t.adults],
+    ["Kids",t.kids3to10]
+  ].map(([l,n])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
 }
 function dateCounts(){
   return settings.dates.map(d=>({date:d,count:activeResponses().filter(r=>r.dates.includes(d)).reduce((s,r)=>s+r.adults+r.kids3to10,0)}));
