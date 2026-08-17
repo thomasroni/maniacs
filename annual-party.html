@@ -1293,6 +1293,20 @@ footer{
   .status{font-size:11px;padding:8px 10px}
 }
 
+
+/* RSVP counters: explicit mobile-friendly layout */
+#partyCounters,#foodCounters{display:block!important;min-height:1px}
+.counter{display:grid!important;grid-template-columns:minmax(120px,1fr) 42px 62px 42px!important;align-items:center!important;gap:8px!important;padding:11px 0!important}
+.counter b{display:block!important;color:#2f343a!important;font-size:15px!important}
+.counter button{display:block!important;width:42px!important;height:40px!important;padding:0!important;font-size:22px!important;font-weight:800!important}
+.counter input{display:block!important;width:62px!important;height:40px!important;padding:6px!important;text-align:center!important;font-size:17px!important;font-weight:750!important}
+@media(max-width:520px){
+  .counter{grid-template-columns:minmax(105px,1fr) 40px 58px 40px!important;gap:6px!important}
+  .counter b{font-size:14px!important}
+  .counter button{width:40px!important;height:39px!important}
+  .counter input{width:58px!important;height:39px!important}
+}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -1647,15 +1661,21 @@ function fmtDate(d){const x=new Date(d+"T12:00:00");return x.toLocaleDateString(
 function money(n){return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(Number(n)||0)}
 function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1800)}
 function uid(){return (crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random().toString(16).slice(2))}
-function val(id){return document.getElementById(id).value}
+function val(id){return document.getElementById(id)?.value??""}
 function num(id){return Number(val(id))||0}
-function checked(id){return document.getElementById(id).checked}
+function checked(id){return !!document.getElementById(id)?.checked}
 
 function renderCounters(){
-  partyCounters.innerHTML = partyFields.map(([k,l])=>counterHtml("p_"+k,l)).join("");
-  foodCounters.innerHTML = foodFields.map(([k,l])=>counterHtml("f_"+k,l)).join("");
+  const partyBox=document.getElementById("partyCounters");
+  const foodBox=document.getElementById("foodCounters");
+  if(!partyBox || !foodBox) return;
+
+  partyBox.innerHTML = partyFields.map(([k,l])=>counterHtml("p_"+k,l)).join("");
+  foodBox.innerHTML = foodFields.map(([k,l])=>counterHtml("f_"+k,l)).join("");
+
   document.querySelectorAll("[data-step]").forEach(b=>b.onclick=()=>{
     const el=document.getElementById(b.dataset.target);
+    if(!el) return;
     el.value=Math.max(0,(Number(el.value)||0)+Number(b.dataset.step));
     validateFood();
   });
@@ -1672,11 +1692,20 @@ function renderDates(){
   dateChoices.innerHTML=settings.dates.map(d=>`<label class="dateopt"><input type="checkbox" class="rsvpDate" value="${d}"><span><strong>${fmtDate(d)}</strong><small>Tap to select</small></span></label>`).join("");
 }
 function validateFood(){
-  const people = num("p_adults")+num("p_kids3to10"); // under 3 excluded from meal count
-  const foods = foodFields.reduce((a,[k])=>a+num("f_"+k),0);
-  foodWarning.classList.toggle("hidden", people===foods || val("attendance")==="NO");
-  foodWarning.textContent = `Meal count is ${foods}, while adults + kids age 3–10 is ${people}. Please make the food counts match.`;
-  return people===foods || val("attendance")==="NO";
+  const adultsEl=document.getElementById("p_adults");
+  const kidsEl=document.getElementById("p_kids3to10");
+  const attendanceEl=document.getElementById("attendance");
+  const warning=document.getElementById("foodWarning");
+  if(!adultsEl || !kidsEl || !attendanceEl || !warning) return true;
+
+  const people=(Number(adultsEl.value)||0)+(Number(kidsEl.value)||0); // under 3 excluded from meal count
+  const foods=foodFields.reduce((a,[k])=>{
+    const el=document.getElementById("f_"+k);
+    return a+(Number(el?.value)||0);
+  },0);
+  warning.classList.toggle("hidden", people===foods || attendanceEl.value==="NO");
+  warning.textContent=`Meal count is ${foods}, while adults + kids age 3–10 is ${people}. Please make the food counts match.`;
+  return people===foods || attendanceEl.value==="NO";
 }
 
 function getFormResponse(){
@@ -2133,7 +2162,7 @@ exportCsv.onclick=()=>{
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="maniacs-party-rsvp.csv";a.click();URL.revokeObjectURL(a.href);
 };
 
-attendance.onchange=validateFood;
+document.getElementById("attendance").onchange=validateFood;
 status.onclick=()=>{ if(!sb) return toast("Supabase library did not load. Refresh the page."); setStatus("Connecting…"); loadAll(); };
 status.title="Tap to retry database connection";
 
