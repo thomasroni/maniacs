@@ -1760,6 +1760,95 @@ footer{
   padding-top:13px;
 }
 
+
+.selection-impact{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:12px;
+}
+.selection-impact>div{
+  border-radius:10px;
+  padding:10px;
+}
+.selection-impact span{
+  display:block;
+  font-size:11px;
+  font-weight:800;
+  margin-bottom:4px;
+}
+.selection-impact b{
+  display:block;
+  font-size:13px;
+}
+.impact-included{
+  background:#edf8f1;
+  border:1px solid #c8e5d1;
+  color:#25643d;
+}
+.impact-excluded{
+  background:#fff4e8;
+  border:1px solid #efd3ad;
+  color:#8a5418;
+}
+.excluded-family-details{
+  margin-top:10px;
+  border:1px solid #ead7bd;
+  border-radius:10px;
+  background:#fffaf3;
+  overflow:hidden;
+}
+.excluded-family-details>summary{
+  cursor:pointer;
+  list-style:none;
+  padding:10px 12px;
+  font-size:12px;
+  font-weight:850;
+  color:#915a1d;
+}
+.excluded-family-details>summary::-webkit-details-marker{display:none}
+.excluded-family-list{
+  border-top:1px solid #ead7bd;
+  padding:5px 12px;
+}
+.excluded-family-row{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  padding:8px 0;
+  border-bottom:1px solid #f0e4d4;
+  font-size:12px;
+}
+.excluded-family-row:last-child{border-bottom:0}
+.excluded-family-row span{color:#41474d}
+.excluded-family-row b{color:#8a5418;white-space:nowrap}
+.all-included-note{
+  margin-top:10px;
+  padding:10px;
+  border-radius:10px;
+  background:#edf8f1;
+  border:1px solid #c8e5d1;
+  color:#25643d;
+  font-size:12px;
+  font-weight:800;
+}
+.top-date-financial-block + .top-date-financial-block{
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px solid #e7e9eb;
+}
+.top-date-financial-title{
+  font-weight:900;
+  color:#b30f16;
+  margin-bottom:9px;
+}
+.top-date-money-grid{
+  margin-top:0!important;
+}
+@media(max-width:520px){
+  .selection-impact{grid-template-columns:1fr}
+}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -1834,7 +1923,7 @@ if(!window.supabase){
       </div>
 
       <div class="card" style="margin-top:14px">
-        <h2>Current RSVP Summary</h2>
+        <h2>Top Pick Payment Summary</h2>
         <div id="bestDateSummary" style="margin-bottom:14px"></div>
         <div class="stats" id="publicStats"></div>
       </div>
@@ -2548,16 +2637,19 @@ function renderBestDateSummary(){
 
   const maxCount=ranked[0].count;
   const topDates=ranked.filter(x=>x.count===maxCount);
-  const allPeople=activeResponses().reduce((s,r)=>s+(Number(r.adults)||0)+(Number(r.kids3to10)||0),0);
+  const allFamilies=activeResponses();
+  const allPeople=allFamilies.reduce((s,r)=>s+(Number(r.adults)||0)+(Number(r.kids3to10)||0),0);
 
   box.innerHTML=`
     <div class="best-date-summary-card">
       <span class="best-date-kicker">🏆 ${topDates.length>1?"Top Date Picks — Tie":"Best Date Pick"}</span>
       <div class="top-picks-list">
         ${topDates.map(top=>{
-          const families=activeResponses().filter(r=>(r.dates||[]).includes(top.date));
+          const included=allFamilies.filter(r=>(r.dates||[]).includes(top.date));
+          const excluded=allFamilies.filter(r=>!(r.dates||[]).includes(top.date));
           const pct=allPeople ? Math.round((top.count/allPeople)*100) : 0;
-          const food=families.reduce((acc,r)=>{
+
+          const food=included.reduce((acc,r)=>{
             acc.vegetarian+=Number(r.food?.vegetarian||0);
             acc.nonVegetarian+=Number(r.food?.nonVegetarian||0);
             acc.vegan+=Number(r.food?.vegan||0);
@@ -2565,42 +2657,94 @@ function renderBestDateSummary(){
             return acc;
           },{vegetarian:0,nonVegetarian:0,vegan:0,jain:0});
 
+          const excludedPeople=excluded.reduce((s,r)=>s+(Number(r.adults)||0)+(Number(r.kids3to10)||0),0);
+
           return `<div class="tied-date-pick">
             <div class="best-date-main">
               <strong>${fmtDate(top.date)}</strong>
               <small>${top.count} people • ${top.families} ${top.families===1?"family":"families"} • ${pct}% of current attendees</small>
             </div>
+
             <div class="best-date-grid">
               <div><span>Veg</span><b>${food.vegetarian}</b></div>
               <div><span>Non-Veg</span><b>${food.nonVegetarian}</b></div>
               <div><span>Vegan</span><b>${food.vegan}</b></div>
               <div><span>Jain</span><b>${food.jain}</b></div>
             </div>
+
+            <div class="selection-impact">
+              <div class="impact-included">
+                <span>✅ Included</span>
+                <b>${included.length} families • ${top.count} people</b>
+              </div>
+              <div class="impact-excluded">
+                <span>⚠️ Excluded if this date is chosen</span>
+                <b>${excluded.length} families • ${excludedPeople} people</b>
+              </div>
+            </div>
+
+            ${excluded.length ? `
+              <details class="excluded-family-details">
+                <summary>View excluded families (${excluded.length})</summary>
+                <div class="excluded-family-list">
+                  ${excluded
+                    .sort((a,b)=>String(a.name||"").localeCompare(String(b.name||"")))
+                    .map(r=>{
+                      const count=(Number(r.adults)||0)+(Number(r.kids3to10)||0);
+                      return `<div class="excluded-family-row">
+                        <span>${esc(r.name)}</span>
+                        <b>${count} ${count===1?"person":"people"}</b>
+                      </div>`;
+                    }).join("")}
+                </div>
+              </details>
+            `:`<div class="all-included-note">🎉 Everyone can attend this date.</div>`}
           </div>`;
         }).join("")}
       </div>
     </div>`;
 }
-
 function renderStats(){
+  const ranked=participationByDate();
+
+  if(!ranked.length || ranked[0].count===0){
+    publicStats.innerHTML=`<div class="empty">No top date yet. Financial totals will appear after families select dates.</div>`;
+  }else{
+    const maxCount=ranked[0].count;
+    const topDates=ranked.filter(x=>x.count===maxCount);
+
+    publicStats.innerHTML=topDates.map(top=>{
+      const selectedFamilies=activeResponses().filter(r=>(r.dates||[]).includes(top.date));
+      const totalDue=selectedFamilies.reduce((s,r)=>s+familyAmount(r),0);
+      const totalPaid=selectedFamilies.filter(r=>r.paid).reduce((s,r)=>s+familyAmount(r),0);
+      const outstanding=Math.max(0,totalDue-totalPaid);
+      const paidFamilies=selectedFamilies.filter(r=>r.paid).length;
+      const unpaidFamilies=selectedFamilies.filter(r=>!r.paid).length;
+
+      return `<div class="top-date-financial-block">
+        ${topDates.length>1?`<div class="top-date-financial-title">${fmtDate(top.date)}</div>`:""}
+        <div class="stats top-date-money-grid">
+          ${[
+            ["Total Due",money(totalDue)],
+            ["Total Paid",money(totalPaid)],
+            ["Outstanding",money(outstanding)],
+            ["Paid Families",paidFamilies],
+            ["Unpaid Families",unpaidFamilies]
+          ].map(([l,n])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("")}
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  // Admin dashboard keeps an all-response view because it is useful while planning.
   const families=activeResponses();
   const totalDue=families.reduce((s,r)=>s+familyAmount(r),0);
   const totalPaid=families.filter(r=>r.paid).reduce((s,r)=>s+familyAmount(r),0);
   const outstanding=Math.max(0,totalDue-totalPaid);
-  const paidFamilies=families.filter(r=>r.paid).length;
-  const unpaidFamilies=families.filter(r=>!r.paid).length;
-
-  publicStats.innerHTML=[
-    ["Total Due",money(totalDue)],
-    ["Total Paid",money(totalPaid)],
-    ["Outstanding",money(outstanding)],
-    ["Paid Families",paidFamilies],
-    ["Unpaid Families",unpaidFamilies]
-  ].map(([l,n])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
-
   const t=totals();
+
   adminStats.innerHTML=[
-    ["Expected Pool",money(totalDue)],
+    ["All RSVP Value",money(totalDue)],
     ["Collected",money(totalPaid)],
     ["Outstanding",money(outstanding)],
     ["Families",t.families],
@@ -2609,37 +2753,6 @@ function renderStats(){
     ["Kids",t.kids3to10]
   ].map(([l,n])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
 }
-function dateCounts(){
-  return settings.dates.map(d=>({date:d,count:activeResponses().filter(r=>r.dates.includes(d)).reduce((s,r)=>s+r.adults+r.kids3to10,0)}));
-}
-function participationByDate(){
-  return dateCounts()
-    .map(x=>({
-      ...x,
-      families:activeResponses().filter(r=>(r.dates||[]).includes(x.date)).length
-    }))
-    .sort((a,b)=>b.count-a.count || b.families-a.families || a.date.localeCompare(b.date));
-}
-
-function renderTopParticipationDate(){
-  const box=document.getElementById("topParticipationDate");
-  if(!box) return;
-  const ranked=participationByDate();
-  if(!ranked.length || ranked[0].count===0){
-    box.innerHTML=`<div class="empty">No date responses yet.</div>`;
-    return;
-  }
-  const top=ranked[0];
-  box.innerHTML=`<div class="top-date-card">
-    <div>
-      <span class="top-date-label">Current leader</span>
-      <strong>${fmtDate(top.date)}</strong>
-      <small>${top.count} people • ${top.families} ${top.families===1?"family":"families"}</small>
-    </div>
-    <div class="top-date-count">${top.count}</div>
-  </div>`;
-}
-
 function renderPoll(){
   const dc=participationByDate();
   const max=Math.max(1,...dc.map(x=>x.count));
