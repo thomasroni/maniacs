@@ -1556,6 +1556,7 @@ if(!window.supabase){
           </div>
         </div>
         <button class="btn primary" id="savePricing" type="button">Save Pricing</button>
+        <div id="pricingImpactNote" class="notice" style="margin-top:12px"></div>
       </div>
 
       <div class="card" style="margin-top:14px">
@@ -2019,6 +2020,7 @@ async function setFamilyPaid(id,paid){
     }).eq("id",id);
     if(error) throw error;
     await loadAll();
+    refreshPricingDependentViews();
     toast(paid?"Marked paid":"Marked unpaid");
   }catch(e){
     console.error(e);
@@ -2119,11 +2121,28 @@ function renderDateFamilyDetails(){
   }).join("");
 }
 
+function refreshPricingDependentViews(){
+  renderAdminPricing();
+  renderCollectionSummary();
+  renderStats();
+  renderDateFamilyDetails();
+  renderResponses();
+  renderVenues();
+  renderBestCombos();
+}
+
 function renderAdminPricing(){
   const a=document.getElementById("adminAdultPrice");
   const k=document.getElementById("adminKidPrice");
   if(a) a.value=Number(settings.adultPrice??50);
   if(k) k.value=Number(settings.kidPrice??25);
+
+  const note=document.getElementById("pricingImpactNote");
+  if(note){
+    const families=activeResponses();
+    const expected=families.reduce((s,r)=>s+familyAmount(r),0);
+    note.innerHTML=`Current rates: <b>${money(settings.adultPrice||0)}</b> per adult and <b>${money(settings.kidPrice||0)}</b> per kid age 3–10. Expected pool at current RSVPs: <b>${money(expected)}</b>.`;
+  }
 }
 
 function renderCollectionSummary(){
@@ -2229,6 +2248,7 @@ window.saveAdminRow=async id=>{
     const {error}=await sb.from("party_responses").upsert(uiResponseToDb(updated),{onConflict:"id"});
     if(error) throw error;
     await loadAll();
+    refreshPricingDependentViews();
     toast("Participant updated");
   }catch(e){
     console.error(e);
@@ -2355,7 +2375,10 @@ function renderBestCombos(){
 function renderAll(){
   document.title=settings.eventName;
   eventSubtitle.textContent=settings.eventName;
-  renderDates();renderStats();renderAdminPricing();renderCollectionSummary();renderPoll();renderDateFamilyDetails();renderResponses();renderVenues();renderBestCombos();renderAdminDateEditor();
+  renderDates();
+  renderPoll();
+  renderAdminDateEditor();
+  refreshPricingDependentViews();
 }
 function showPage(page){
   document.querySelectorAll(".page").forEach(x=>x.classList.add("hidden"));
