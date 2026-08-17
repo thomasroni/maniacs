@@ -1541,6 +1541,26 @@ if(!window.supabase){
       <div class="card" style="margin-top:14px">
         <div class="between">
           <div>
+            <h3>💵 Ticket Pricing</h3>
+            <div class="sub">Set the amount each adult and child age 3–10 should pay.</div>
+          </div>
+        </div>
+        <div class="grid2" style="margin-top:12px">
+          <div class="field">
+            <label>Adult Cost ($)</label>
+            <input id="adminAdultPrice" type="number" min="0" step="0.01" inputmode="decimal">
+          </div>
+          <div class="field">
+            <label>Kids 3–10 Cost ($)</label>
+            <input id="adminKidPrice" type="number" min="0" step="0.01" inputmode="decimal">
+          </div>
+        </div>
+        <button class="btn primary" id="savePricing" type="button">Save Pricing</button>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="between">
+          <div>
             <h3>💰 Collection Summary</h3>
             <div class="sub">Live payment pool based on current family RSVPs and configured adult/kid prices.</div>
           </div>
@@ -2099,6 +2119,13 @@ function renderDateFamilyDetails(){
   }).join("");
 }
 
+function renderAdminPricing(){
+  const a=document.getElementById("adminAdultPrice");
+  const k=document.getElementById("adminKidPrice");
+  if(a) a.value=Number(settings.adultPrice??50);
+  if(k) k.value=Number(settings.kidPrice??25);
+}
+
 function renderCollectionSummary(){
   const box=document.getElementById("collectionStats");
   if(!box) return;
@@ -2328,7 +2355,7 @@ function renderBestCombos(){
 function renderAll(){
   document.title=settings.eventName;
   eventSubtitle.textContent=settings.eventName;
-  renderDates();renderStats();renderCollectionSummary();renderPoll();renderDateFamilyDetails();renderResponses();renderVenues();renderBestCombos();renderAdminDateEditor();
+  renderDates();renderStats();renderAdminPricing();renderCollectionSummary();renderPoll();renderDateFamilyDetails();renderResponses();renderVenues();renderBestCombos();renderAdminDateEditor();
 }
 function showPage(page){
   document.querySelectorAll(".page").forEach(x=>x.classList.add("hidden"));
