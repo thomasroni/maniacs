@@ -1450,6 +1450,56 @@ footer{
   color:#a4302b!important;
 }
 
+
+.top-date-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:16px;
+  border:1px solid #ead49b;
+  border-radius:14px;
+  background:linear-gradient(135deg,#fff9e8,#fff);
+}
+.top-date-label{
+  display:block;
+  color:#9a7008;
+  font-size:11px;
+  font-weight:850;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  margin-bottom:5px;
+}
+.top-date-card strong{
+  display:block;
+  font-size:21px;
+  color:#222;
+}
+.top-date-card small{
+  display:block;
+  margin-top:5px;
+  color:#6b7280!important;
+}
+.top-date-count{
+  min-width:62px;
+  height:62px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:#d71920;
+  color:#fff;
+  font-size:24px;
+  font-weight:900;
+}
+.poll-leader{
+  padding:8px 9px;
+  margin-left:-9px;
+  margin-right:-9px;
+  border-radius:10px;
+  background:#fff8e8;
+  border:1px solid #f0dda9;
+}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -1567,6 +1617,16 @@ if(!window.supabase){
           </div>
         </div>
         <div class="stats" id="collectionStats"></div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="between">
+          <div>
+            <h3>🏆 Top Participation Date</h3>
+            <div class="sub">The date currently selected by the most attendees.</div>
+          </div>
+        </div>
+        <div id="topParticipationDate"></div>
       </div>
 
       <div class="card" style="margin-top:14px">
@@ -2043,7 +2103,8 @@ function renderDateFamilyDetails(){
     <span>Kids 3–10 <b>${money(settings.kidPrice||0)}</b></span>
   </div>`;
 
-  box.innerHTML=pricing+settings.dates.map(d=>{
+  const orderedDates=participationByDate().map(x=>x.date);
+  box.innerHTML=pricing+orderedDates.map(d=>{
     const families=active
       .filter(r=>(r.dates||[]).includes(d))
       .sort((a,b)=>String(a.name||"").localeCompare(String(b.name||"")));
@@ -2054,7 +2115,7 @@ function renderDateFamilyDetails(){
       <details class="date-family-block">
         <summary>
           <div>
-            <strong>${fmtDate(d)}</strong>
+            <strong>${orderedDates[0]===d && people>0?"🏆 ":""}${fmtDate(d)}</strong>
             <small>${families.length} ${families.length===1?"family":"families"} • ${people} people</small>
           </div>
           <span class="date-family-chevron">⌄</span>
@@ -2125,6 +2186,8 @@ function refreshPricingDependentViews(){
   renderAdminPricing();
   renderCollectionSummary();
   renderStats();
+  renderPoll();
+  renderTopParticipationDate();
   renderDateFamilyDetails();
   renderResponses();
   renderVenues();
@@ -2180,9 +2243,42 @@ function renderStats(){
 function dateCounts(){
   return settings.dates.map(d=>({date:d,count:activeResponses().filter(r=>r.dates.includes(d)).reduce((s,r)=>s+r.adults+r.kids3to10,0)}));
 }
+function participationByDate(){
+  return dateCounts()
+    .map(x=>({
+      ...x,
+      families:activeResponses().filter(r=>(r.dates||[]).includes(x.date)).length
+    }))
+    .sort((a,b)=>b.count-a.count || b.families-a.families || a.date.localeCompare(b.date));
+}
+
+function renderTopParticipationDate(){
+  const box=document.getElementById("topParticipationDate");
+  if(!box) return;
+  const ranked=participationByDate();
+  if(!ranked.length || ranked[0].count===0){
+    box.innerHTML=`<div class="empty">No date responses yet.</div>`;
+    return;
+  }
+  const top=ranked[0];
+  box.innerHTML=`<div class="top-date-card">
+    <div>
+      <span class="top-date-label">Current leader</span>
+      <strong>${fmtDate(top.date)}</strong>
+      <small>${top.count} people • ${top.families} ${top.families===1?"family":"families"}</small>
+    </div>
+    <div class="top-date-count">${top.count}</div>
+  </div>`;
+}
+
 function renderPoll(){
-  const dc=dateCounts(); const max=Math.max(1,...dc.map(x=>x.count));
-  pollBars.innerHTML=dc.map(x=>`<div class="barrow"><span>${new Date(x.date+"T12:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric"})}</span><div class="bar"><i style="width:${x.count/max*100}%"></i></div><b>${x.count}</b></div>`).join("") || `<div class="empty">No dates configured.</div>`;
+  const dc=participationByDate();
+  const max=Math.max(1,...dc.map(x=>x.count));
+  pollBars.innerHTML=dc.map((x,i)=>`<div class="barrow ${i===0&&x.count>0?"poll-leader":""}">
+    <span>${i===0&&x.count>0?"🏆 ":""}${new Date(x.date+"T12:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric"})}</span>
+    <div class="bar"><i style="width:${x.count/max*100}%"></i></div>
+    <b>${x.count}</b>
+  </div>`).join("") || `<div class="empty">No dates configured.</div>`;
 }
 function renderResponses(){
   responseRows.innerHTML=responses.length?responses.map(r=>`<tr data-rid="${r.id}">
@@ -2377,6 +2473,7 @@ function renderAll(){
   eventSubtitle.textContent=settings.eventName;
   renderDates();
   renderPoll();
+  renderTopParticipationDate();
   renderAdminDateEditor();
   refreshPricingDependentViews();
 }
