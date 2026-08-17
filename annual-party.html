@@ -1380,8 +1380,8 @@ footer{
   <div class="modalhead"><b>Admin Access</b><button class="x" onclick="adminDialog.close()">×</button></div>
   <div class="modalbody">
     <div class="field"><label>Admin PIN</label><input id="adminPin" type="password" inputmode="numeric" placeholder="Enter PIN"></div>
-    <div class="notice warn">Default demo PIN is <b>2026</b>. Change <code>ADMIN_PIN</code> in the HTML before publishing.</div>
-    <button class="btn dark" id="adminLogin">Enter Admin Mode</button>
+    <div class="notice warn">Admin access uses the same simple PIN pattern as the other Maniacs GitHub Pages apps.</div>
+    <button class="btn primary" id="adminLogin">Enter Admin Mode</button>
   </div>
 </dialog>
 
@@ -1487,19 +1487,11 @@ async function loadAll(){
       settings = {
         eventName: sRes.data.event_name || DEFAULT_SETTINGS.eventName,
         budgetPerPerson: Number(sRes.data.budget_per_person ?? 50),
-        dates: Array.isArray(sRes.data.candidate_dates) && sRes.data.candidate_dates.length
+        dates: Array.isArray(sRes.data.candidate_dates)
           ? sRes.data.candidate_dates
-          : DEFAULT_SETTINGS.dates
+          : []
       };
     } else {
-      const seed = {
-        id: 1,
-        event_name: DEFAULT_SETTINGS.eventName,
-        budget_per_person: DEFAULT_SETTINGS.budgetPerPerson,
-        candidate_dates: DEFAULT_SETTINGS.dates
-      };
-      const ins = await sb.from("party_settings").insert(seed);
-      if (ins.error) throw ins.error;
       settings = structuredClone(DEFAULT_SETTINGS);
     }
 
@@ -1905,8 +1897,28 @@ function showPage(page){
 }
 document.querySelectorAll(".tab").forEach(x=>x.onclick=()=>showPage(x.dataset.page));
 
-adminBtn.onclick=()=>{ if(isAdmin){isAdmin=false;app.classList.remove("admin");adminBtn.textContent="Admin";showPage("rsvp");} else adminDialog.showModal(); };
-adminLogin.onclick=()=>{if(adminPin.value===ADMIN_PIN){isAdmin=true;app.classList.add("admin");adminBtn.textContent="Exit Admin";adminDialog.close();adminPin.value="";renderAll();showPage("dashboard");toast("Admin mode enabled")}else toast("Incorrect PIN")};
+adminBtn.onclick=()=>{
+  if(isAdmin){
+    isAdmin=false;
+    app.classList.remove("admin");
+    adminBtn.textContent="Admin";
+    showPage("rsvp");
+  }else{
+    adminDialog.showModal();
+  }
+};
+
+adminLogin.onclick=()=>{
+  if(adminPin.value!==ADMIN_PIN) return toast("Incorrect PIN");
+  isAdmin=true;
+  app.classList.add("admin");
+  adminBtn.textContent="Exit Admin";
+  adminDialog.close();
+  adminPin.value="";
+  renderAll();
+  showPage("dashboard");
+  toast("Admin mode enabled");
+};
 
 function renderAdminDateEditor(){
   const list=document.getElementById("adminDateList");
