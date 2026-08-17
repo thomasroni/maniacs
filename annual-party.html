@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <title>Maniacs Annual Party</title>
+  <style>
+    :root{
+      --bg:#f3f4f6; --card:#fff; --text:#111827; --muted:#6b7280; --line:#e5e7eb;
+      --accent:#dc2626; --accent2:#111827; --good:#15803d; --warn:#b45309; --bad:#b91c1c;
+      --shadow:0 10px 30px rgba(0,0,0,.07); --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+    button,input,select,textarea{font:inherit}
+    .wrap{max-width:1100px;margin:auto;padding:0 14px 80px}
+    header{position:sticky;top:0;z-index:20;background:rgba(17,24,39,.96);color:white;margin:0 -14px 18px;padding:14px max(14px,env(safe-area-inset-right)) 12px;backdrop-filter:blur(10px)}
+    .headrow{max-width:1100px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .brand{display:flex;gap:10px;align-items:center}.logo{width:42px;height:42px;border-radius:50%;background:#dc2626;display:grid;place-items:center;font-weight:900}
+    .brand h1{font-size:18px;margin:0}.brand small{display:block;color:#d1d5db;margin-top:1px}
+    .tabs{display:flex;gap:6px;overflow:auto;margin-top:12px;padding-bottom:2px;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
+    .tab{border:1px solid #374151;color:#e5e7eb;background:#1f2937;border-radius:999px;padding:8px 13px;white-space:nowrap;cursor:pointer}
+    .tab.active{background:white;color:#111827;border-color:white;font-weight:700}
+    .mode{font-size:12px;padding:5px 9px;border-radius:999px;background:#374151;color:#fff}
+    .grid{display:grid;grid-template-columns:1fr;gap:14px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    @media(max-width:720px){.grid2,.grid3{grid-template-columns:1fr}.desktop{display:none!important}}
+    .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;border:1px solid rgba(229,231,235,.7)}
+    .card h2,.card h3{margin:0 0 12px}.sub{color:var(--muted);font-size:14px;margin-top:-5px;margin-bottom:14px}
+    label{font-size:13px;font-weight:700;display:block;margin-bottom:6px;color:#374151}
+    input,select,textarea{width:100%;border:1px solid #d1d5db;background:#fff;border-radius:12px;padding:11px 12px;outline:none}
+    input:focus,select:focus,textarea:focus{border-color:#9ca3af;box-shadow:0 0 0 3px rgba(107,114,128,.12)}
+    textarea{min-height:90px;resize:vertical}.field{margin-bottom:13px}
+    .btn{border:0;border-radius:12px;padding:11px 15px;cursor:pointer;font-weight:800}.btn.primary{background:var(--accent);color:white}.btn.dark{background:#111827;color:white}.btn.ghost{background:#f3f4f6;color:#111827}.btn.good{background:#166534;color:white}.btn.warn{background:#92400e;color:white}.btn.sm{padding:7px 10px;font-size:13px}.btn:disabled{opacity:.5;cursor:not-allowed}
+    .row{display:flex;align-items:center;gap:10px}.between{display:flex;justify-content:space-between;align-items:center;gap:10px}.actions{display:flex;gap:8px;flex-wrap:wrap}
+    .pill{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:999px;background:#f3f4f6;font-size:12px;font-weight:700}.pill.good{background:#dcfce7;color:#166534}.pill.bad{background:#fee2e2;color:#991b1b}.pill.warn{background:#ffedd5;color:#9a3412}
+    .counter{display:grid;grid-template-columns:1fr 42px 44px 42px;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}.counter:last-child{border-bottom:0}.counter button{height:36px;border:0;border-radius:10px;background:#f3f4f6;font-size:20px}.counter input{text-align:center;padding:8px}
+    .dateopt{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:8px;cursor:pointer}.dateopt input{width:20px;height:20px}.dateopt strong{display:block}.dateopt small{color:var(--muted)}
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{padding:14px;background:#f9fafb;border:1px solid var(--line);border-radius:14px}.stat b{display:block;font-size:25px}.stat span{font-size:12px;color:var(--muted)}
+    @media(max-width:720px){.stats{grid-template-columns:1fr 1fr}}
+    .barrow{display:grid;grid-template-columns:95px 1fr 36px;align-items:center;gap:8px;margin:10px 0}.bar{height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden}.bar>i{display:block;height:100%;background:#111827;border-radius:999px}
+    .tablewrap{overflow:auto;border:1px solid var(--line);border-radius:14px}table{width:100%;border-collapse:collapse;min-width:760px}th,td{text-align:left;padding:10px 11px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:top}th{background:#f9fafb;position:sticky;top:0}tr:last-child td{border-bottom:0}
+    .venue{border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:12px}.venue.best{border:2px solid #166534}.venue h3{margin:0}.score{font-size:28px;font-weight:900}.money{font-weight:900;font-size:20px}
+    .empty{text-align:center;color:var(--muted);padding:28px 12px}.hidden{display:none!important}
+    .notice{padding:12px 14px;border-radius:12px;background:#eff6ff;color:#1e3a8a;border:1px solid #bfdbfe;font-size:13px;margin-bottom:14px}.notice.warn{background:#fffbeb;border-color:#fde68a;color:#92400e}
+    .toast{position:fixed;left:50%;bottom:25px;transform:translateX(-50%);background:#111827;color:#fff;border-radius:12px;padding:11px 16px;z-index:100;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.2s}.toast.show{opacity:1}
+    dialog{border:0;border-radius:18px;max-width:680px;width:calc(100% - 24px);padding:0;box-shadow:0 25px 80px rgba(0,0,0,.25)}dialog::backdrop{background:rgba(0,0,0,.4)}.modalhead{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}.modalbody{padding:18px;max-height:75vh;overflow:auto}
+    .x{border:0;background:#f3f4f6;width:34px;height:34px;border-radius:50%;cursor:pointer}
+    .admin-only{display:none}.admin .admin-only{display:initial}.admin div.admin-only,.admin section.admin-only{display:block}
+    .admin-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.admin-tab{border:0;border-radius:10px;padding:8px 10px;background:#f3f4f6;cursor:pointer}.admin-tab.active{background:#111827;color:white}
+    footer{text-align:center;color:#9ca3af;font-size:12px;margin-top:25px}
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="wrap" id="app">
+  <header>
+    <div class="headrow">
+      <div class="brand"><div class="logo">M</div><div><h1>Maniacs Annual Party</h1><small id="eventSubtitle">RSVP • Date Poll • Venue Planner</small></div></div>
+      <div class="row"><span class="mode" id="dataMode">SUPABASE</span><button class="btn sm ghost" id="adminBtn">Admin</button></div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-page="rsvp">RSVP</button>
+      <button class="tab" data-page="poll">Date Poll</button>
+      <button class="tab admin-only" data-page="venues">Venues</button>
+      <button class="tab admin-only" data-page="dashboard">Dashboard</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="page-rsvp" class="page">
+      <div class="grid2">
+        <div class="card">
+          <h2>🎉 Party RSVP</h2>
+          <div class="sub">Tell us who is attending and your food preferences.</div>
+          <div class="field"><label>Member / Family Name</label><input id="memberName" placeholder="Enter your name"></div>
+          <div class="field"><label>Attendance</label><select id="attendance"><option value="YES">Yes — attending</option><option value="MAYBE">Maybe</option><option value="NO">No — cannot attend</option></select></div>
+          <h3>Party Count</h3>
+          <div id="partyCounters"></div>
+        </div>
+
+        <div class="card">
+          <h2>🍽️ Food Preferences</h2>
+          <div class="sub">Enter the number of people for each preference.</div>
+          <div id="foodCounters"></div>
+          <div id="foodWarning" class="notice warn hidden"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h2>📅 Which dates work?</h2>
+        <div class="sub">Select every date that is feasible for your family.</div>
+        <div id="dateChoices"></div>
+        <div class="field" style="margin-top:14px"><label>Comments / dietary requests</label><textarea id="notes" placeholder="Optional notes"></textarea></div>
+        <div class="between">
+          <small style="color:var(--muted)" id="editHint"></small>
+          <button class="btn primary" id="saveRsvp">Save RSVP</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="page-poll" class="page hidden">
+      <div class="card">
+        <h2>📊 Date Preference</h2>
+        <div class="sub">Current responses from attending/maybe families.</div>
+        <div id="pollBars"></div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h2>Current RSVP Summary</h2>
+        <div class="stats" id="publicStats"></div>
+      </div>
+    </section>
+
+    <section id="page-venues" class="page hidden admin-only">
+      <div class="card">
+        <div class="between"><div><h2>🏛️ Venue Comparison</h2><div class="sub">Compare actual all-in cost, food, DJ/dance floor and availability.</div></div><button class="btn dark" id="addVenue">+ Add Venue</button></div>
+        <div class="notice">Tip: enter the actual quote you receive from each venue. Availability should be recorded only after the venue confirms it.</div>
+        <div id="venueList"></div>
+      </div>
+    </section>
+
+    <section id="page-dashboard" class="page hidden admin-only">
+      <div class="card">
+        <div class="between"><div><h2>⚙️ Admin Dashboard</h2><div class="sub">Manage RSVPs and party planning.</div></div><div class="actions"><button class="btn ghost" id="eventSettings">Event Settings</button><button class="btn primary" id="adminAdd">+ Participant</button></div></div>
+        <div class="stats" id="adminStats"></div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="between"><h3>Responses</h3><button class="btn sm ghost" id="exportCsv">Export CSV</button></div>
+        <div class="tablewrap"><table><thead><tr><th>Name</th><th>Status</th><th>Adults</th><th>Kids</th><th>Food</th><th>Dates</th><th>Action</th></tr></thead><tbody id="responseRows"></tbody></table></div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h3>Best Date + Venue Combinations</h3>
+        <div id="bestCombos"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>New Jersey Maniacs • Annual Party Planner</footer>
+</div>
+
+<dialog id="adminDialog">
+  <div class="modalhead"><b>Admin Access</b><button class="x" onclick="adminDialog.close()">×</button></div>
+  <div class="modalbody">
+    <div class="field"><label>Admin PIN</label><input id="adminPin" type="password" inputmode="numeric" placeholder="Enter PIN"></div>
+    <div class="notice warn">Default demo PIN is <b>2026</b>. Change <code>ADMIN_PIN</code> in the HTML before publishing.</div>
+    <button class="btn dark" id="adminLogin">Enter Admin Mode</button>
+  </div>
+</dialog>
+
+<dialog id="venueDialog">
+  <div class="modalhead"><b id="venueModalTitle">Add Venue</b><button class="x" onclick="venueDialog.close()">×</button></div>
+  <div class="modalbody">
+    <input id="venueId" type="hidden">
+    <div class="grid2">
+      <div class="field"><label>Venue Name</label><input id="vName"></div>
+      <div class="field"><label>Location</label><input id="vLocation" placeholder="Edison, NJ"></div>
+      <div class="field"><label>Capacity</label><input id="vCapacity" type="number" value="120"></div>
+      <div class="field"><label>Adult Price / Person ($)</label><input id="vAdultPrice" type="number" step=".01" value="50"></div>
+      <div class="field"><label>Kids 3–10 Price ($)</label><input id="vKidPrice" type="number" step=".01" value="25"></div>
+      <div class="field"><label>Kids under 3 Price ($)</label><input id="vUnder3Price" type="number" step=".01" value="0"></div>
+      <div class="field"><label>DJ Cost ($)</label><input id="vDjCost" type="number" step=".01" value="0"></div>
+      <div class="field"><label>Other Fixed Cost ($)</label><input id="vOtherCost" type="number" step=".01" value="0"></div>
+      <div class="field"><label>Service Charge %</label><input id="vService" type="number" step=".01" value="0"></div>
+      <div class="field"><label>Tax %</label><input id="vTax" type="number" step=".001" value="6.625"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Food Choices</label><div id="vFoods"></div></div>
+      <div class="field"><label>Features</label>
+        <label><input style="width:auto" type="checkbox" id="vDance"> Dance floor</label>
+        <label><input style="width:auto" type="checkbox" id="vDj"> DJ available / included</label>
+        <label><input style="width:auto" type="checkbox" id="vParking"> Parking</label>
+      </div>
+    </div>
+    <div class="field"><label>Date Availability</label><div id="vDates"></div></div>
+    <div class="field"><label>Menu / Notes</label><textarea id="vNotes"></textarea></div>
+    <button class="btn primary" id="saveVenue">Save Venue</button>
+  </div>
+</dialog>
+
+<dialog id="settingsDialog">
+  <div class="modalhead"><b>Event Settings</b><button class="x" onclick="settingsDialog.close()">×</button></div>
+  <div class="modalbody">
+    <div class="field"><label>Event Name</label><input id="sEventName"></div>
+    <div class="field"><label>Suggested Dates — one date per line (YYYY-MM-DD)</label><textarea id="sDates"></textarea></div>
+    <div class="field"><label>Target Budget / Person ($)</label><input id="sBudget" type="number" value="50"></div>
+    <button class="btn primary" id="saveSettings">Save Settings</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/*
+  MANIACS ANNUAL PARTY — SINGLE FILE + SUPABASE VERSION
+  --------------------------------------------------------
+  Shared live data is stored in Supabase.
+  This file uses the browser-safe Supabase publishable key only.
+  Never place a service_role key in a GitHub Pages HTML file.
+*/
+
+const ADMIN_PIN = "2026"; // CHANGE BEFORE PUBLISHING
+
+const SUPABASE_URL = "https://pfwkauorjzzcnuvwujxj.supabase.co";
+const SUPABASE_KEY = "sb_publishable_1gUsJnbBzdphciR-WcYy7w_1Vn-n-X1";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const DEFAULT_SETTINGS = {
+  eventName: "Maniacs Annual Party 2026",
+  budgetPerPerson: 50,
+  dates: ["2026-11-14","2026-11-21","2026-12-05","2026-12-12"]
+};
+
+let settings = structuredClone(DEFAULT_SETTINGS);
+let responses = [];
+let venues = [];
+let editingResponseId = null;
+let isAdmin = false;
+let syncing = false;
+
+async function loadAll(){
+  setSync("SYNCING");
+  try {
+    const [sRes, rRes, vRes] = await Promise.all([
+      sb.from("party_settings").select("*").eq("id", 1).maybeSingle(),
+      sb.from("party_responses").select("*").order("updated_at", {ascending:false}),
+      sb.from("party_venues").select("*").order("name", {ascending:true})
+    ]);
+
+    if (sRes.error) throw sRes.error;
+    if (rRes.error) throw rRes.error;
+    if (vRes.error) throw vRes.error;
+
+    if (sRes.data) {
+      settings = {
+        eventName: sRes.data.event_name || DEFAULT_SETTINGS.eventName,
+        budgetPerPerson: Number(sRes.data.budget_per_person ?? 50),
+        dates: Array.isArray(sRes.data.candidate_dates) && sRes.data.candidate_dates.length
+          ? sRes.data.candidate_dates
+          : DEFAULT_SETTINGS.dates
+      };
+    } else {
+      const seed = {
+        id: 1,
+        event_name: DEFAULT_SETTINGS.eventName,
+        budget_per_person: DEFAULT_SETTINGS.budgetPerPerson,
+        candidate_dates: DEFAULT_SETTINGS.dates
+      };
+      const ins = await sb.from("party_settings").insert(seed);
+      if (ins.error) throw ins.error;
+      settings = structuredClone(DEFAULT_SETTINGS);
+    }
+
+    responses = (rRes.data || []).map(dbResponseToUi);
+    venues = (vRes.data || []).map(dbVenueToUi);
+
+    renderAll();
+    setSync("LIVE");
+  } catch (e) {
+    console.error(e);
+    setSync("ERROR");
+    toast("Supabase sync failed: " + (e.message || e));
+  }
+}
+
+function setSync(text){
+  dataMode.textContent = text;
+  dataMode.style.background = text === "LIVE" ? "#166534" : text === "ERROR" ? "#991b1b" : "#374151";
+}
+
+function dbResponseToUi(r){
+  return {
+    id:r.id,
+    name:r.name,
+    status:r.status,
+    adults:Number(r.adults||0),
+    kids3to10:Number(r.kids_3_to_10||0),
+    kidsUnder3:Number(r.kids_under_3||0),
+    food:{
+      vegetarian:Number(r.vegetarian||0),
+      nonVegetarian:Number(r.non_vegetarian||0),
+      vegan:Number(r.vegan||0),
+      jain:Number(r.jain||0)
+    },
+    dates:Array.isArray(r.available_dates)?r.available_dates:[],
+    notes:r.notes||"",
+    enteredByAdmin:!!r.entered_by_admin,
+    updatedAt:r.updated_at
+  };
+}
+
+function uiResponseToDb(r){
+  return {
+    id:r.id,
+    name:r.name,
+    status:r.status,
+    adults:r.adults,
+    kids_3_to_10:r.kids3to10,
+    kids_under_3:r.kidsUnder3,
+    vegetarian:r.food?.vegetarian||0,
+    non_vegetarian:r.food?.nonVegetarian||0,
+    vegan:r.food?.vegan||0,
+    jain:r.food?.jain||0,
+    available_dates:r.dates||[],
+    notes:r.notes||"",
+    entered_by_admin:!!r.enteredByAdmin,
+    updated_at:new Date().toISOString()
+  };
+}
+
+function dbVenueToUi(v){
+  return {
+    id:v.id,
+    name:v.name,
+    location:v.location||"",
+    capacity:Number(v.capacity||0),
+    adultPrice:Number(v.adult_price||0),
+    kidPrice:Number(v.kid_price||0),
+    under3Price:Number(v.under3_price||0),
+    djCost:Number(v.dj_cost||0),
+    otherCost:Number(v.other_cost||0),
+    servicePct:Number(v.service_pct||0),
+    taxPct:Number(v.tax_pct||0),
+    dance:!!v.dance_floor,
+    dj:!!v.dj_available,
+    parking:!!v.parking,
+    food:v.food_choices||{},
+    availability:v.date_availability||{},
+    notes:v.notes||""
+  };
+}
+
+function uiVenueToDb(v){
+  return {
+    id:v.id,
+    name:v.name,
+    location:v.location||"",
+    capacity:v.capacity||0,
+    adult_price:v.adultPrice||0,
+    kid_price:v.kidPrice||0,
+    under3_price:v.under3Price||0,
+    dj_cost:v.djCost||0,
+    other_cost:v.otherCost||0,
+    service_pct:v.servicePct||0,
+    tax_pct:v.taxPct||0,
+    dance_floor:!!v.dance,
+    dj_available:!!v.dj,
+    parking:!!v.parking,
+    food_choices:v.food||{},
+    date_availability:v.availability||{},
+    notes:v.notes||"",
+    updated_at:new Date().toISOString()
+  };
+}
+function esc(s=""){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function fmtDate(d){const x=new Date(d+"T12:00:00");return x.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric",year:"numeric"})}
+function money(n){return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(Number(n)||0)}
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1800)}
+function uid(){return (crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random().toString(16).slice(2))}
+function val(id){return document.getElementById(id).value}
+function num(id){return Number(val(id))||0}
+function checked(id){return document.getElementById(id).checked}
+
+function renderCounters(){
+  partyCounters.innerHTML = partyFields.map(([k,l])=>counterHtml("p_"+k,l)).join("");
+  foodCounters.innerHTML = foodFields.map(([k,l])=>counterHtml("f_"+k,l)).join("");
+  document.querySelectorAll("[data-step]").forEach(b=>b.onclick=()=>{
+    const el=document.getElementById(b.dataset.target);
+    el.value=Math.max(0,(Number(el.value)||0)+Number(b.dataset.step));
+    validateFood();
+  });
+  document.querySelectorAll(".counter input").forEach(x=>x.oninput=validateFood);
+}
+function counterHtml(id,label){
+  return `<div class="counter"><b>${label}</b><button type="button" data-step="-1" data-target="${id}">−</button><input id="${id}" type="number" min="0" value="0"><button type="button" data-step="1" data-target="${id}">+</button></div>`
+}
+function renderDates(){
+  dateChoices.innerHTML=settings.dates.map(d=>`<label class="dateopt"><input type="checkbox" class="rsvpDate" value="${d}"><span><strong>${fmtDate(d)}</strong><small>Select if feasible</small></span></label>`).join("");
+}
+function validateFood(){
+  const people = num("p_adults")+num("p_kids3to10"); // under 3 excluded from meal count
+  const foods = foodFields.reduce((a,[k])=>a+num("f_"+k),0);
+  foodWarning.classList.toggle("hidden", people===foods || val("attendance")==="NO");
+  foodWarning.textContent = `Meal count is ${foods}, while adults + kids age 3–10 is ${people}. Please make the food counts match.`;
+  return people===foods || val("attendance")==="NO";
+}
+
+function getFormResponse(){
+  return {
+    id: editingResponseId || uid(),
+    name: val("memberName").trim(),
+    status: val("attendance"),
+    adults:num("p_adults"),
+    kids3to10:num("p_kids3to10"),
+    kidsUnder3:num("p_kidsUnder3"),
+    food:Object.fromEntries(foodFields.map(([k])=>[k,num("f_"+k)])),
+    dates:[...document.querySelectorAll(".rsvpDate:checked")].map(x=>x.value),
+    notes:val("notes").trim(),
+    enteredByAdmin:isAdmin,
+    updatedAt:new Date().toISOString()
+  };
+}
+function resetForm(){
+  editingResponseId=null;
+  memberName.value=""; attendance.value="YES"; notes.value="";
+  partyFields.forEach(([k])=>document.getElementById("p_"+k).value=0);
+  foodFields.forEach(([k])=>document.getElementById("f_"+k).value=0);
+  document.querySelectorAll(".rsvpDate").forEach(x=>x.checked=false);
+  editHint.textContent="";
+  validateFood();
+}
+saveRsvp.onclick=async()=>{
+  const r=getFormResponse();
+  if(!r.name) return toast("Please enter member name");
+  if(!validateFood()) return toast("Food count must match meal count");
+  if(r.status!=="NO" && r.dates.length===0) return toast("Select at least one feasible date");
+
+  saveRsvp.disabled=true;
+  try{
+    const {error}=await sb.from("party_responses").upsert(uiResponseToDb(r), {onConflict:"id"});
+    if(error) throw error;
+    await loadAll();
+    resetForm();
+    toast("RSVP saved");
+  }catch(e){
+    console.error(e);
+    toast("Save failed: "+(e.message||e));
+  }finally{
+    saveRsvp.disabled=false;
+  }
+};
+
+function activeResponses(){return responses.filter(r=>r.status!=="NO")}
+function totals(){
+  const a=activeResponses();
+  const t={families:a.length,adults:0,kids3to10:0,kidsUnder3:0,people:0,vegetarian:0,nonVegetarian:0,vegan:0,jain:0};
+  a.forEach(r=>{
+    t.adults+=r.adults;t.kids3to10+=r.kids3to10;t.kidsUnder3+=r.kidsUnder3;
+    foodFields.forEach(([k])=>t[k]+=Number(r.food?.[k]||0));
+  });
+  t.people=t.adults+t.kids3to10+t.kidsUnder3;
+  return t;
+}
+function renderStats(){
+  const t=totals();
+  publicStats.innerHTML=[
+    ["People",t.people],["Adults",t.adults],["Kids",t.kids3to10+t.kidsUnder3],["Families",t.families],
+    ["Vegetarian",t.vegetarian],["Non-Veg",t.nonVegetarian],["Vegan",t.vegan],["Jain",t.jain]
+  ].map(([l,n])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
+  adminStats.innerHTML=publicStats.innerHTML;
+}
+function dateCounts(){
+  return settings.dates.map(d=>({date:d,count:activeResponses().filter(r=>r.dates.includes(d)).reduce((s,r)=>s+r.adults+r.kids3to10+r.kidsUnder3,0)}));
+}
+function renderPoll(){
+  const dc=dateCounts(); const max=Math.max(1,...dc.map(x=>x.count));
+  pollBars.innerHTML=dc.map(x=>`<div class="barrow"><span>${new Date(x.date+"T12:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric"})}</span><div class="bar"><i style="width:${x.count/max*100}%"></i></div><b>${x.count}</b></div>`).join("") || `<div class="empty">No dates configured.</div>`;
+}
+function renderResponses(){
+  responseRows.innerHTML=responses.length?responses.map(r=>`<tr>
+    <td><b>${esc(r.name)}</b>${r.notes?`<br><small>${esc(r.notes)}</small>`:""}</td>
+    <td><span class="pill ${r.status==="YES"?"good":r.status==="NO"?"bad":"warn"}">${r.status}</span></td>
+    <td>${r.adults}</td><td>${r.kids3to10+r.kidsUnder3}</td>
+    <td>V ${r.food?.vegetarian||0} • NV ${r.food?.nonVegetarian||0} • Vegan ${r.food?.vegan||0} • Jain ${r.food?.jain||0}</td>
+    <td>${r.dates.map(d=>new Date(d+"T12:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric"})).join(", ")}</td>
+    <td><div class="actions"><button class="btn sm ghost" onclick="editResponse('${r.id}')">Edit</button><button class="btn sm ghost" onclick="deleteResponse('${r.id}')">Delete</button></div></td>
+  </tr>`).join(""):`<tr><td colspan="7" class="empty">No responses yet.</td></tr>`;
+}
+window.editResponse=id=>{
+  const r=responses.find(x=>x.id===id); if(!r)return;
+  editingResponseId=id; memberName.value=r.name;attendance.value=r.status;notes.value=r.notes||"";
+  partyFields.forEach(([k])=>document.getElementById("p_"+k).value=r[k]||0);
+  foodFields.forEach(([k])=>document.getElementById("f_"+k).value=r.food?.[k]||0);
+  document.querySelectorAll(".rsvpDate").forEach(x=>x.checked=r.dates.includes(x.value));
+  editHint.textContent=`Editing ${r.name}`;
+  showPage("rsvp"); window.scrollTo({top:0,behavior:"smooth"});
+};
+window.deleteResponse=async id=>{
+  if(!confirm("Delete this RSVP?")) return;
+  try{
+    const {error}=await sb.from("party_responses").delete().eq("id",id);
+    if(error) throw error;
+    await loadAll();
+    toast("RSVP deleted");
+  }catch(e){toast("Delete failed: "+(e.message||e))}
+};
+adminAdd.onclick=()=>{resetForm();showPage("rsvp");memberName.focus()};
+
+function venueTotal(v){
+  const t=totals();
+  const base=t.adults*v.adultPrice+t.kids3to10*v.kidPrice+t.kidsUnder3*v.under3Price+(v.djCost||0)+(v.otherCost||0);
+  const service=base*(v.servicePct||0)/100;
+  const subtotal=base+service;
+  const tax=subtotal*(v.taxPct||0)/100;
+  const total=subtotal+tax;
+  return {base,service,tax,total,pp:t.people?total/t.people:0};
+}
+function valueScore(v){
+  const t=totals(), vt=venueTotal(v);
+  const costScore = settings.budgetPerPerson ? Math.max(0,Math.min(100,100-(Math.max(0,vt.pp-settings.budgetPerPerson)/settings.budgetPerPerson*120))) : 70;
+  const foodScore=(["vegetarian","nonVegetarian","vegan","jain"].filter(k=>v.food?.[k]).length/4)*100;
+  const features=((v.dance?1:0)+(v.dj?1:0)+(v.parking?1:0))/3*100;
+  const dc=dateCounts();const max=Math.max(1,...dc.map(x=>x.count));
+  let bestDateScore=0;
+  settings.dates.forEach(d=>{if(v.availability?.[d]==="AVAILABLE"){const count=dc.find(x=>x.date===d)?.count||0;bestDateScore=Math.max(bestDateScore,count/max*100)}});
+  const capacityScore=v.capacity>=t.people?100:Math.max(0,(v.capacity/(t.people||1))*100);
+  return Math.round(costScore*.30+foodScore*.25+features*.15+bestDateScore*.20+capacityScore*.10);
+}
+function renderVenues(){
+  if(!venues.length){venueList.innerHTML=`<div class="empty">No venues yet. Tap <b>Add Venue</b> to enter your first quote.</div>`;return}
+  const ranked=[...venues].sort((a,b)=>valueScore(b)-valueScore(a));
+  venueList.innerHTML=ranked.map((v,i)=>{
+    const q=venueTotal(v), avail=settings.dates.filter(d=>v.availability?.[d]==="AVAILABLE");
+    return `<div class="venue ${i===0?"best":""}">
+      <div class="between"><div><div class="row"><h3>${esc(v.name)}</h3>${i===0?'<span class="pill good">Best Value</span>':""}</div><small>${esc(v.location||"")} • Capacity ${v.capacity||0}</small></div><div class="score">${valueScore(v)}<small>/100</small></div></div>
+      <div class="grid3" style="margin-top:13px">
+        <div><small>Effective cost/person</small><div class="money">${money(q.pp)}</div></div>
+        <div><small>Estimated total</small><div class="money">${money(q.total)}</div></div>
+        <div><small>Quoted adult price</small><div class="money">${money(v.adultPrice)}</div></div>
+      </div>
+      <div style="margin-top:12px">
+        ${v.dance?'<span class="pill good">Dance Floor</span>':''}
+        ${v.dj?'<span class="pill good">DJ</span>':''}
+        ${v.parking?'<span class="pill">Parking</span>':''}
+        ${Object.entries(v.food||{}).filter(([k,x])=>x).map(([k])=>`<span class="pill">${k==="nonVegetarian"?"Non-Veg":k[0].toUpperCase()+k.slice(1)}</span>`).join(" ")}
+      </div>
+      <div style="margin-top:10px"><b>Available:</b> ${avail.length?avail.map(fmtDate).join(" • "):"No confirmed dates"}</div>
+      ${v.notes?`<div style="margin-top:8px;color:var(--muted)">${esc(v.notes)}</div>`:""}
+      <div class="actions" style="margin-top:12px"><button class="btn sm ghost" onclick="openVenue('${v.id}')">Edit</button><button class="btn sm ghost" onclick="removeVenue('${v.id}')">Delete</button></div>
+    </div>`;
+  }).join("");
+}
+addVenue.onclick=()=>openVenue();
+window.openVenue=id=>{
+  const v=venues.find(x=>x.id===id);
+  venueId.value=v?.id||"";venueModalTitle.textContent=v?"Edit Venue":"Add Venue";
+  vName.value=v?.name||"";vLocation.value=v?.location||"";vCapacity.value=v?.capacity||120;vAdultPrice.value=v?.adultPrice??50;vKidPrice.value=v?.kidPrice??25;vUnder3Price.value=v?.under3Price??0;vDjCost.value=v?.djCost??0;vOtherCost.value=v?.otherCost??0;vService.value=v?.servicePct??0;vTax.value=v?.taxPct??6.625;
+  vDance.checked=!!v?.dance;vDj.checked=!!v?.dj;vParking.checked=!!v?.parking;vNotes.value=v?.notes||"";
+  vFoods.innerHTML=foodFields.map(([k,l])=>`<label><input style="width:auto" type="checkbox" class="vf" value="${k}" ${v?.food?.[k]?"checked":""}> ${l}</label>`).join("");
+  vDates.innerHTML=settings.dates.map(d=>`<div class="between" style="margin:7px 0"><span>${fmtDate(d)}</span><select class="vdate" data-date="${d}" style="width:150px"><option value="UNKNOWN">Unknown</option><option value="AVAILABLE" ${v?.availability?.[d]==="AVAILABLE"?"selected":""}>Available</option><option value="UNAVAILABLE" ${v?.availability?.[d]==="UNAVAILABLE"?"selected":""}>Unavailable</option></select></div>`).join("");
+  venueDialog.showModal();
+};
+saveVenue.onclick=async()=>{
+  if(!vName.value.trim()) return toast("Enter venue name");
+  const id=venueId.value||uid();
+  const food={};document.querySelectorAll(".vf").forEach(x=>food[x.value]=x.checked);
+  const availability={};document.querySelectorAll(".vdate").forEach(x=>availability[x.dataset.date]=x.value);
+  const v={id,name:vName.value.trim(),location:vLocation.value.trim(),capacity:num("vCapacity"),adultPrice:num("vAdultPrice"),kidPrice:num("vKidPrice"),under3Price:num("vUnder3Price"),djCost:num("vDjCost"),otherCost:num("vOtherCost"),servicePct:num("vService"),taxPct:num("vTax"),dance:checked("vDance"),dj:checked("vDj"),parking:checked("vParking"),food,availability,notes:vNotes.value.trim()};
+  saveVenue.disabled=true;
+  try{
+    const {error}=await sb.from("party_venues").upsert(uiVenueToDb(v), {onConflict:"id"});
+    if(error) throw error;
+    await loadAll();
+    venueDialog.close();
+    toast("Venue saved");
+  }catch(e){toast("Venue save failed: "+(e.message||e))}
+  finally{saveVenue.disabled=false}
+};
+window.removeVenue=async id=>{
+  if(!confirm("Delete this venue?")) return;
+  try{
+    const {error}=await sb.from("party_venues").delete().eq("id",id);
+    if(error) throw error;
+    await loadAll();
+    toast("Venue deleted");
+  }catch(e){toast("Delete failed: "+(e.message||e))}
+};
+
+function renderBestCombos(){
+  const dc=dateCounts(); const t=totals(); const arr=[];
+  venues.forEach(v=>settings.dates.forEach(d=>{
+    if(v.availability?.[d]==="AVAILABLE"){
+      const count=dc.find(x=>x.date===d)?.count||0;
+      const q=venueTotal(v);
+      arr.push({v,d,count,pct:t.people?Math.round(count/t.people*100):0,pp:q.pp,score:valueScore(v)});
+    }
+  }));
+  arr.sort((a,b)=>(b.pct*0.55+b.score*0.45)-(a.pct*0.55+a.score*0.45));
+  bestCombos.innerHTML=arr.length?arr.slice(0,8).map((x,i)=>`<div class="venue ${i===0?"best":""}">
+    <div class="between"><div><b>${fmtDate(x.d)}</b><br>${esc(x.v.name)}</div><div>${i===0?'<span class="pill good">Best Combination</span>':""}</div></div>
+    <div class="grid3" style="margin-top:10px"><div><small>People feasible</small><b style="display:block">${x.count} (${x.pct}%)</b></div><div><small>Effective cost</small><b style="display:block">${money(x.pp)}/person</b></div><div><small>Venue score</small><b style="display:block">${x.score}/100</b></div></div>
+  </div>`).join(""):`<div class="empty">Add venue availability to see date + venue recommendations.</div>`;
+}
+function renderAll(){
+  document.title=settings.eventName;
+  eventSubtitle.textContent=settings.eventName;
+  renderDates();renderStats();renderPoll();renderResponses();renderVenues();renderBestCombos();
+}
+function showPage(page){
+  document.querySelectorAll(".page").forEach(x=>x.classList.add("hidden"));
+  document.getElementById("page-"+page).classList.remove("hidden");
+  document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x.dataset.page===page));
+}
+document.querySelectorAll(".tab").forEach(x=>x.onclick=()=>showPage(x.dataset.page));
+
+adminBtn.onclick=()=>{ if(isAdmin){isAdmin=false;app.classList.remove("admin");adminBtn.textContent="Admin";showPage("rsvp");} else adminDialog.showModal(); };
+adminLogin.onclick=()=>{if(adminPin.value===ADMIN_PIN){isAdmin=true;app.classList.add("admin");adminBtn.textContent="Exit Admin";adminDialog.close();adminPin.value="";renderAll();showPage("dashboard");toast("Admin mode enabled")}else toast("Incorrect PIN")};
+
+eventSettings.onclick=()=>{
+  sEventName.value=settings.eventName;sDates.value=settings.dates.join("\n");sBudget.value=settings.budgetPerPerson;settingsDialog.showModal();
+};
+saveSettings.onclick=async()=>{
+  const dates=sDates.value.split(/\n|,/).map(x=>x.trim()).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x));
+  if(!dates.length)return toast("Enter at least one valid date");
+  const next={eventName:sEventName.value.trim()||DEFAULT_SETTINGS.eventName,budgetPerPerson:Number(sBudget.value)||50,dates:[...new Set(dates)].sort()};
+  try{
+    const {error}=await sb.from("party_settings").upsert({
+      id:1,event_name:next.eventName,budget_per_person:next.budgetPerPerson,candidate_dates:next.dates,updated_at:new Date().toISOString()
+    },{onConflict:"id"});
+    if(error) throw error;
+    settings=next;
+    settingsDialog.close();
+    await loadAll();
+    toast("Settings saved");
+  }catch(e){toast("Settings save failed: "+(e.message||e))}
+};
+
+exportCsv.onclick=()=>{
+  const cols=["Name","Status","Adults","Kids 3-10","Kids under 3","Vegetarian","Non-Vegetarian","Vegan","Jain","Dates","Notes"];
+  const rows=responses.map(r=>[r.name,r.status,r.adults,r.kids3to10,r.kidsUnder3,r.food?.vegetarian||0,r.food?.nonVegetarian||0,r.food?.vegan||0,r.food?.jain||0,r.dates.join(" | "),r.notes||""]);
+  const csv=[cols,...rows].map(row=>row.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n");
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="maniacs-party-rsvp.csv";a.click();URL.revokeObjectURL(a.href);
+};
+
+attendance.onchange=validateFood;
+
+renderCounters();
+renderAll();
+loadAll();
+
+// Refresh automatically when another member changes shared data.
+sb.channel("party-live")
+  .on("postgres_changes",{event:"*",schema:"public",table:"party_responses"},()=>loadAll())
+  .on("postgres_changes",{event:"*",schema:"public",table:"party_venues"},()=>loadAll())
+  .on("postgres_changes",{event:"*",schema:"public",table:"party_settings"},()=>loadAll())
+  .subscribe();
+</script>
+</body>
+</html>
