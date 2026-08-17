@@ -2664,7 +2664,7 @@ window.openVenue=id=>{
   vDance.checked=!!v?.dance;vDj.checked=!!v?.dj;vParking.checked=!!v?.parking;vNotes.value=v?.notes||"";
   vFoods.innerHTML=foodFields.map(([k,l])=>`<label><input style="width:auto" type="checkbox" class="vf" value="${k}" ${v?.food?.[k]?"checked":""}> ${l}</label>`).join("");
   vDates.innerHTML=settings.dates.map(d=>`<div class="between" style="margin:7px 0"><span>${fmtDate(d)}</span><select class="vdate" data-date="${d}" style="width:150px"><option value="UNKNOWN">Unknown</option><option value="AVAILABLE" ${v?.availability?.[d]==="AVAILABLE"?"selected":""}>Available</option><option value="UNAVAILABLE" ${v?.availability?.[d]==="UNAVAILABLE"?"selected":""}>Unavailable</option></select></div>`).join("");
-  venueDialog.showModal();
+  document.getElementById("venueDialog")?.showModal();
 };
 saveVenue.onclick=async()=>{
   if(!vName.value.trim()) return toast("Enter venue name");
@@ -2677,7 +2677,7 @@ saveVenue.onclick=async()=>{
     const {error}=await sb.from("party_venues").upsert(uiVenueToDb(v), {onConflict:"id"});
     if(error) throw error;
     await loadAll();
-    venueDialog.close();
+    document.getElementById("venueDialog")?.close();
     toast("Venue saved");
   }catch(e){toast("Venue save failed: "+(e.message||e))}
   finally{saveVenue.disabled=false}
@@ -2815,7 +2815,7 @@ adminBtn.onclick=()=>{
     adminBtn.textContent="Admin";
     showPage("rsvp");
   }else{
-    adminDialog.showModal();
+    document.getElementById("adminDialog")?.showModal();
   }
 };
 
@@ -2824,7 +2824,7 @@ adminLogin.onclick=()=>{
   isAdmin=true;
   app.classList.add("admin");
   adminBtn.textContent="Exit Admin";
-  adminDialog.close();
+  document.getElementById("adminDialog")?.close();
   adminPin.value="";
   renderAll();
   showPage("dashboard");
@@ -2899,13 +2899,20 @@ function openDateManager(){
   sKidPrice.value=settings.kidPrice??25;
   newPartyDate.value="";
   renderAdminDateEditor();
-  settingsDialog.showModal();
+  document.getElementById("settingsDialog")?.showModal();
 }
+
 
 
 
 const newEventBtnEl=document.getElementById("newEventBtn");
 const createEventBtnEl=document.getElementById("createEventBtn");
+const newEventTypeEl=document.getElementById("newEventType");
+const newEventYearEl=document.getElementById("newEventYear");
+const newEventNameEl=document.getElementById("newEventName");
+const newEventAdultPriceEl=document.getElementById("newEventAdultPrice");
+const newEventKidPriceEl=document.getElementById("newEventKidPrice");
+const newEventDialogEl=document.getElementById("newEventDialog");
 
 function suggestedEventName(type,year){
   if(type==="potluck") return `Maniacs Mid-Year Potluck ${year}`;
@@ -2917,40 +2924,47 @@ function suggestedEventName(type,year){
 if(newEventBtnEl){
   newEventBtnEl.onclick=()=>{
     const year=new Date().getFullYear();
-    newEventType.value="annual";
-    newEventYear.value=year;
-    newEventName.value=suggestedEventName("annual",year);
-    newEventAdultPrice.value=Number(settings.adultPrice??50);
-    newEventKidPrice.value=Number(settings.kidPrice??25);
-    newEventDialog.showModal();
+    if(newEventTypeEl) newEventTypeEl.value="annual";
+    if(newEventYearEl) newEventYearEl.value=year;
+    if(newEventNameEl) newEventNameEl.value=suggestedEventName("annual",year);
+    if(newEventAdultPriceEl) newEventAdultPriceEl.value=Number(settings.adultPrice??50);
+    if(newEventKidPriceEl) newEventKidPriceEl.value=Number(settings.kidPrice??25);
+    newEventDialogEl?.showModal();
   };
 }
 
-newEventType.onchange=()=>{
-  const year=Number(newEventYear.value)||new Date().getFullYear();
-  newEventName.value=suggestedEventName(newEventType.value,year);
-};
-newEventYear.oninput=()=>{
-  const year=Number(newEventYear.value)||new Date().getFullYear();
-  newEventName.value=suggestedEventName(newEventType.value,year);
-};
+if(newEventTypeEl){
+  newEventTypeEl.onchange=()=>{
+    const year=Number(newEventYearEl?.value)||new Date().getFullYear();
+    if(newEventNameEl) newEventNameEl.value=suggestedEventName(newEventTypeEl.value,year);
+  };
+}
+
+if(newEventYearEl){
+  newEventYearEl.oninput=()=>{
+    const year=Number(newEventYearEl.value)||new Date().getFullYear();
+    if(newEventNameEl) newEventNameEl.value=suggestedEventName(newEventTypeEl?.value||"annual",year);
+  };
+}
 
 if(createEventBtnEl){
   createEventBtnEl.onclick=async()=>{
-    const year=Number(newEventYear.value);
-    const eventType=newEventType.value||"other";
-    const name=newEventName.value.trim()||suggestedEventName(eventType,year);
-    const adultPrice=Math.max(0,Number(newEventAdultPrice.value)||0);
-    const kidPrice=Math.max(0,Number(newEventKidPrice.value)||0);
+    const year=Number(newEventYearEl?.value);
+    const eventType=newEventTypeEl?.value||"other";
+    const name=(newEventNameEl?.value||"").trim()||suggestedEventName(eventType,year);
+    const adultPrice=Math.max(0,Number(newEventAdultPriceEl?.value)||0);
+    const kidPrice=Math.max(0,Number(newEventKidPriceEl?.value)||0);
+
     if(!year) return toast("Enter a valid year");
-    if(events.some(e=>Number(e.event_year)===year && String(e.event_type||"annual")===eventType))
+    if(events.some(e=>Number(e.event_year)===year && String(e.event_type||"annual")===eventType)){
       return toast("That event type already exists for "+year);
+    }
 
     createEventBtnEl.disabled=true;
     createEventBtnEl.textContent="Creating…";
     setStatus("Creating event…");
+
     try{
-      // Multiple current events are allowed (for example Potluck + Annual Party).
       const {data,error}=await sb.from("party_settings").insert({
         event_year:year,
         event_type:eventType,
@@ -2964,7 +2978,8 @@ if(createEventBtnEl){
       }).select("id").single();
 
       if(error) throw error;
-      newEventDialog.close();
+
+      newEventDialogEl?.close();
       await loadAll(data.id);
       showPage("dashboard");
       setStatus("Connected");
@@ -3139,7 +3154,7 @@ saveSettings.onclick=async()=>{
       dates:Array.isArray(data.candidate_dates)?[...data.candidate_dates].sort():[]
     };
 
-    settingsDialog.close();
+    document.getElementById("settingsDialog")?.close();
     renderAll();
     setStatus("Connected");
     toast("Party settings saved");
@@ -3166,13 +3181,19 @@ status.title="Tap to retry database connection";
 
 
 // Start the database connection first so UI rendering cannot block Supabase initialization.
-if(sb){
-  setStatus("Connecting…");
-  loadAll();
-}else{
-  setStatus("Library error",false);
+try{
+  if(sb){
+    setStatus("Syncing…");
+    loadAll();
+  }else{
+    setStatus("Library error",false);
+  }
+  showPage("poll");
+}catch(e){
+  console.error("App startup failed",e);
+  setStatus("Startup error",false);
+  toast("Startup error: "+(e.message||e));
 }
-showPage("poll");
 
 try {
   ensureRsvpCounters();
