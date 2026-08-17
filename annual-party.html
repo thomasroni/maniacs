@@ -1848,7 +1848,7 @@ function validateFood(){
 
 function getFormResponse(){
   return {
-    id: editingResponseId || uid(),
+    id: editingResponseId || null,
     name: val("memberName").trim(),
     status: val("attendance"),
     adults:num("p_adults"),
@@ -1877,17 +1877,41 @@ saveRsvp.onclick=async()=>{
   if(r.status!=="NO" && (!settings.dates || settings.dates.length===0)) return toast("Admin has not published party dates yet");
   if(r.status!=="NO" && r.dates.length===0) return toast("Select at least one available date");
 
+  const wasEditing=!!editingResponseId;
   saveRsvp.disabled=true;
+
   try{
-    const {error}=await sb.from("party_responses").upsert(uiResponseToDb(r), {onConflict:"id"});
-    if(error) throw error;
-    const wasEditing=!!editingResponseId;
+    if(wasEditing){
+      // Update ONLY the selected family row.
+      const payload=uiResponseToDb(r);
+      delete payload.id;
+
+      const {error}=await sb
+        .from("party_responses")
+        .update(payload)
+        .eq("id", editingResponseId);
+
+      if(error) throw error;
+    }else{
+      // New family: always INSERT a brand-new database row.
+      // Let Supabase generate the UUID so there is no possibility
+      // of accidentally reusing an existing response ID.
+      const payload=uiResponseToDb(r);
+      delete payload.id;
+
+      const {error}=await sb
+        .from("party_responses")
+        .insert(payload);
+
+      if(error) throw error;
+    }
+
     await loadAll();
     resetForm();
-    toast(wasEditing?"Family response updated":"RSVP saved");
+    toast(wasEditing?"Family response updated":"New family RSVP added");
     showPage("poll");
   }catch(e){
-    console.error(e);
+    console.error("RSVP save failed",e);
     toast("Save failed: "+(e.message||e));
   }finally{
     saveRsvp.disabled=false;
