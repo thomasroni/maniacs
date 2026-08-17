@@ -1271,6 +1271,28 @@ footer{
   }
 }
 
+
+.status{
+  margin-left:auto;
+  border:1px solid #28a85a;
+  background:#0d2e24;
+  color:#64e386;
+  font-weight:800;
+  padding:9px 14px;
+  border-radius:10px;
+  font-size:12px;
+  white-space:nowrap;
+}
+.status:before{content:'●';margin-right:7px}
+.status.bad{
+  border-color:#ef4444;
+  background:#3b1515;
+  color:#fecaca;
+}
+@media(max-width:720px){
+  .status{font-size:11px;padding:8px 10px}
+}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1279,7 +1301,7 @@ footer{
   <header>
     <div class="headrow">
       <div class="brand"><div class="logo">M</div><div><h1>Maniacs Annual Holiday Party</h1><small id="eventSubtitle">RSVP • Date Poll • Venue Planner</small><small class="holidayTag">Celebrate Together ✨</small></div></div>
-      <div class="row"><span class="mode" id="dataMode">SUPABASE</span><button class="btn sm ghost" id="adminBtn">Admin</button></div>
+      <div class="row"><span id="status" class="status">Connecting…</span><button class="btn sm ghost" id="adminBtn">Admin</button></div>
     </div>
     <div class="tabs">
       <button class="tab active" data-page="rsvp">RSVP</button>
@@ -1453,8 +1475,8 @@ footer{
 
 const ADMIN_PIN = "2026"; // CHANGE BEFORE PUBLISHING
 
-const SUPABASE_URL = "https://pfwkauorjzzcnuvwujxj.supabase.co";
-const SUPABASE_KEY = "sb_publishable_1gUsJnbBzdphciR-WcYy7w_1Vn-n-X1";
+const SUPABASE_URL="https://pfwkauorjzzcnuvwujxj.supabase.co";
+const SUPABASE_KEY="sb_publishable_1gUsJnbBzdphciR-WcYy7w_1Vn-n-X1";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const DEFAULT_SETTINGS = {
@@ -1471,45 +1493,45 @@ let isAdmin = false;
 let syncing = false;
 
 async function loadAll(){
-  setSync("SYNCING");
-  try {
-    const [sRes, rRes, vRes] = await Promise.all([
-      sb.from("party_settings").select("*").eq("id", 1).maybeSingle(),
-      sb.from("party_responses").select("*").order("updated_at", {ascending:false}),
-      sb.from("party_venues").select("*").order("name", {ascending:true})
+  setStatus("Syncing…");
+  try{
+    const [sRes,rRes,vRes]=await Promise.all([
+      sb.from("party_settings").select("id,event_name,budget_per_person,candidate_dates,updated_at").eq("id",1).maybeSingle(),
+      sb.from("party_responses").select("*").order("updated_at",{ascending:false}),
+      sb.from("party_venues").select("*").order("name",{ascending:true})
     ]);
 
-    if (sRes.error) throw sRes.error;
-    if (rRes.error) throw rRes.error;
-    if (vRes.error) throw vRes.error;
+    if(sRes.error) throw sRes.error;
+    if(rRes.error) throw rRes.error;
+    if(vRes.error) throw vRes.error;
 
-    if (sRes.data) {
-      settings = {
-        eventName: sRes.data.event_name || DEFAULT_SETTINGS.eventName,
-        budgetPerPerson: Number(sRes.data.budget_per_person ?? 50),
-        dates: Array.isArray(sRes.data.candidate_dates)
-          ? sRes.data.candidate_dates
-          : []
+    if(sRes.data){
+      settings={
+        eventName:sRes.data.event_name||DEFAULT_SETTINGS.eventName,
+        budgetPerPerson:Number(sRes.data.budget_per_person??50),
+        dates:Array.isArray(sRes.data.candidate_dates)?[...sRes.data.candidate_dates].sort():[]
       };
-    } else {
-      settings = structuredClone(DEFAULT_SETTINGS);
+    }else{
+      settings=structuredClone(DEFAULT_SETTINGS);
     }
 
-    responses = (rRes.data || []).map(dbResponseToUi);
-    venues = (vRes.data || []).map(dbVenueToUi);
+    responses=(rRes.data||[]).map(dbResponseToUi);
+    venues=(vRes.data||[]).map(dbVenueToUi);
 
     renderAll();
-    setSync("LIVE");
-  } catch (e) {
+    setStatus("Connected");
+  }catch(e){
     console.error(e);
-    setSync("ERROR");
-    toast("Supabase sync failed: " + (e.message || e));
+    setStatus("Could not connect",false);
+    toast("Supabase sync failed: "+(e.message||e));
   }
 }
 
-function setSync(text){
-  dataMode.textContent = text;
-  dataMode.style.background = text === "LIVE" ? "#166534" : text === "ERROR" ? "#991b1b" : "#374151";
+function setStatus(t,ok=true){
+  const s=document.getElementById("status");
+  if(!s) return;
+  s.textContent=t;
+  s.classList.toggle("bad",!ok);
 }
 
 function dbResponseToUi(r){
@@ -1938,25 +1960,38 @@ function renderAdminDateEditor(){
 }
 
 window.removeAdminDate=async(d)=>{
-  const nextDates=(settings.dates||[]).filter(x=>x!==d);
+  const nextDates=(settings.dates||[]).filter(x=>x!==d).sort();
+  setStatus("Saving dates…");
+
   try{
-    const {data,error}=await sb.from("party_settings")
-      .update({
+    const {data,error}=await sb
+      .from("party_settings")
+      .upsert({
+        id:1,
+        event_name:settings.eventName||DEFAULT_SETTINGS.eventName,
+        budget_per_person:Number(settings.budgetPerPerson||50),
         candidate_dates:nextDates,
         updated_at:new Date().toISOString()
-      })
-      .eq("id",1)
-      .select("candidate_dates")
+      },{onConflict:"id"})
+      .select("id,event_name,budget_per_person,candidate_dates,updated_at")
       .single();
 
     if(error) throw error;
-    settings.dates=Array.isArray(data?.candidate_dates)?data.candidate_dates:nextDates;
+
+    settings={
+      eventName:data.event_name||settings.eventName,
+      budgetPerPerson:Number(data.budget_per_person??settings.budgetPerPerson),
+      dates:Array.isArray(data.candidate_dates)?[...data.candidate_dates].sort():[]
+    };
+
     renderAdminDateEditor();
     renderDates();
     renderPoll();
+    setStatus("Connected");
     toast("Date removed");
   }catch(e){
     console.error("Remove date failed",e);
+    setStatus("Save failed",false);
     toast("Could not remove date: "+(e.message||e));
   }
 };
@@ -1976,57 +2011,45 @@ addPartyDateBtn.onclick=async()=>{
   const d=newPartyDate.value;
   if(!d) return toast("Choose a date first");
 
-  const dates=new Set(settings.dates||[]);
-  dates.add(d);
-  const nextDates=[...dates].sort();
-
+  const nextDates=[...new Set([...(settings.dates||[]),d])].sort();
   addPartyDateBtn.disabled=true;
   addPartyDateBtn.textContent="Saving…";
+  setStatus("Saving date…");
 
   try{
-    // Update the single settings row and immediately read back what Supabase stored.
-    let result=await sb.from("party_settings")
-      .update({
-        candidate_dates:nextDates,
-        updated_at:new Date().toISOString()
-      })
-      .eq("id",1)
-      .select("id,candidate_dates")
-      .maybeSingle();
+    const payload={
+      id:1,
+      event_name:settings.eventName||DEFAULT_SETTINGS.eventName,
+      budget_per_person:Number(settings.budgetPerPerson||50),
+      candidate_dates:nextDates,
+      updated_at:new Date().toISOString()
+    };
 
-    if(result.error) throw result.error;
+    const {data,error}=await sb
+      .from("party_settings")
+      .upsert(payload,{onConflict:"id"})
+      .select("id,event_name,budget_per_person,candidate_dates,updated_at")
+      .single();
 
-    // If row id=1 somehow does not exist, create it.
-    if(!result.data){
-      result=await sb.from("party_settings")
-        .insert({
-          id:1,
-          event_name:settings.eventName||DEFAULT_SETTINGS.eventName,
-          budget_per_person:settings.budgetPerPerson||50,
-          candidate_dates:nextDates,
-          updated_at:new Date().toISOString()
-        })
-        .select("id,candidate_dates")
-        .single();
-      if(result.error) throw result.error;
-    }
+    if(error) throw error;
+    if(!Array.isArray(data?.candidate_dates)) throw new Error("candidate_dates was not returned as an array");
+    if(!data.candidate_dates.includes(d)) throw new Error("Supabase did not persist the new date");
 
-    const savedDates=Array.isArray(result.data?.candidate_dates)
-      ? result.data.candidate_dates
-      : [];
+    settings={
+      eventName:data.event_name||payload.event_name,
+      budgetPerPerson:Number(data.budget_per_person??payload.budget_per_person),
+      dates:[...data.candidate_dates].sort()
+    };
 
-    if(!savedDates.includes(d)){
-      throw new Error("Supabase did not return the newly added date.");
-    }
-
-    settings.dates=savedDates.sort();
     newPartyDate.value="";
     renderAdminDateEditor();
     renderDates();
     renderPoll();
-    toast("Date saved to database");
+    setStatus("Connected");
+    toast("Date saved");
   }catch(e){
-    console.error("Add date failed",e);
+    console.error("Date save failed",e);
+    setStatus("Save failed",false);
     toast("Date save failed: "+(e.message||e));
   }finally{
     addPartyDateBtn.disabled=false;
@@ -2034,40 +2057,44 @@ addPartyDateBtn.onclick=async()=>{
   }
 };
 saveSettings.onclick=async()=>{
-  const dates=[...(settings.dates||[])].sort();
   const next={
     eventName:sEventName.value.trim()||DEFAULT_SETTINGS.eventName,
     budgetPerPerson:Number(sBudget.value)||50,
-    dates
+    dates:[...(settings.dates||[])].sort()
   };
 
   saveSettings.disabled=true;
   saveSettings.textContent="Saving…";
+  setStatus("Saving settings…");
 
   try{
-    const {data,error}=await sb.from("party_settings").upsert({
-      id:1,
-      event_name:next.eventName,
-      budget_per_person:next.budgetPerPerson,
-      candidate_dates:next.dates,
-      updated_at:new Date().toISOString()
-    },{onConflict:"id"})
-    .select("id,event_name,budget_per_person,candidate_dates")
-    .single();
+    const {data,error}=await sb
+      .from("party_settings")
+      .upsert({
+        id:1,
+        event_name:next.eventName,
+        budget_per_person:next.budgetPerPerson,
+        candidate_dates:next.dates,
+        updated_at:new Date().toISOString()
+      },{onConflict:"id"})
+      .select("id,event_name,budget_per_person,candidate_dates,updated_at")
+      .single();
 
     if(error) throw error;
 
     settings={
       eventName:data.event_name||next.eventName,
       budgetPerPerson:Number(data.budget_per_person??next.budgetPerPerson),
-      dates:Array.isArray(data.candidate_dates)?data.candidate_dates:[]
+      dates:Array.isArray(data.candidate_dates)?[...data.candidate_dates].sort():[]
     };
 
     settingsDialog.close();
     renderAll();
-    toast("Party settings saved to database");
+    setStatus("Connected");
+    toast("Party settings saved");
   }catch(e){
     console.error("Settings save failed",e);
+    setStatus("Save failed",false);
     toast("Settings save failed: "+(e.message||e));
   }finally{
     saveSettings.disabled=false;
