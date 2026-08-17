@@ -1665,6 +1665,19 @@ function val(id){return document.getElementById(id)?.value??""}
 function num(id){return Number(val(id))||0}
 function checked(id){return !!document.getElementById(id)?.checked}
 
+const partyFields = [
+  ["adults","Adults"],
+  ["kids3to10","Kids age 3–10"],
+  ["kidsUnder3","Kids under 3"]
+];
+
+const foodFields = [
+  ["vegetarian","Vegetarian"],
+  ["nonVegetarian","Non-Vegetarian"],
+  ["vegan","Vegan"],
+  ["jain","Jain"]
+];
+
 function renderCounters(){
   const partyBox=document.getElementById("partyCounters");
   const foodBox=document.getElementById("foodCounters");
