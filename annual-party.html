@@ -1518,12 +1518,20 @@ async function loadAll(){
     responses=(rRes.data||[]).map(dbResponseToUi);
     venues=(vRes.data||[]).map(dbVenueToUi);
 
-    renderAll();
+    // Database reads succeeded. Show connection state before rendering the UI.
     setStatus("Connected");
+    try {
+      renderAll();
+    } catch (renderError) {
+      console.error("Render after Supabase load failed", renderError);
+      toast("Connected to database, but part of the UI could not render");
+    }
   }catch(e){
-    console.error(e);
-    setStatus("Could not connect",false);
-    toast("Supabase sync failed: "+(e.message||e));
+    console.error("Supabase load failed",e);
+    setStatus("Connection error",false);
+    const s=document.getElementById("status");
+    if(s) s.title=String(e.message||e);
+    toast("Database connection failed: "+(e.message||e));
   }
 }
 
@@ -2110,10 +2118,21 @@ exportCsv.onclick=()=>{
 };
 
 attendance.onchange=validateFood;
+status.onclick=()=>{ setStatus("Connecting…"); loadAll(); };
+status.title="Tap to retry database connection";
 
-renderCounters();
-renderAll();
+
+// Start the database connection first so UI rendering cannot block Supabase initialization.
+setStatus("Connecting…");
 loadAll();
+
+try {
+  renderCounters();
+  renderAll();
+} catch (e) {
+  console.error("Initial UI render failed", e);
+  // loadAll() is already running; do not prevent the database connection from completing.
+}
 
 // Refresh automatically when another member changes shared data.
 sb.channel("party-live")
