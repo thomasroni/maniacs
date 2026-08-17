@@ -1416,6 +1416,40 @@ footer{
   .family-table{min-width:820px!important}
 }
 
+
+.pricing-banner{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom:12px;
+}
+.pricing-banner span{
+  background:#fff8e8;
+  border:1px solid #ead49b;
+  color:#6f571b;
+  border-radius:999px;
+  padding:7px 11px;
+  font-size:12px;
+}
+.pricing-banner b{color:#8a6200}
+.payment-select{
+  width:92px!important;
+  min-width:92px!important;
+  padding:7px 8px!important;
+  border-radius:9px!important;
+  font-weight:800!important;
+}
+.payment-select.paid{
+  background:#edf8f1!important;
+  border-color:#bddfc8!important;
+  color:#176638!important;
+}
+.payment-select.unpaid{
+  background:#fff3f2!important;
+  border-color:#efc6c2!important;
+  color:#a4302b!important;
+}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -1507,6 +1541,16 @@ if(!window.supabase){
       <div class="card" style="margin-top:14px">
         <div class="between">
           <div>
+            <h3>💰 Collection Summary</h3>
+            <div class="sub">Live payment pool based on current family RSVPs and configured adult/kid prices.</div>
+          </div>
+        </div>
+        <div class="stats" id="collectionStats"></div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="between">
+          <div>
             <h3>📅 Party Date Choices</h3>
             <div class="sub">Create the dates members are allowed to select.</div>
           </div>
@@ -1518,8 +1562,8 @@ if(!window.supabase){
       <div class="card" style="margin-top:14px">
         <div class="between"><h3>Responses</h3><button class="btn sm ghost" id="exportCsv">Export CSV</button></div>
         <div class="tablewrap"><table class="admin-edit-table"><thead><tr>
-<th>Name</th><th>Status</th><th>Adults</th><th>Kids 3–10</th><th>Under 3</th>
-<th>Veg</th><th>Non-Veg</th><th>Vegan</th><th>Jain</th><th>Dates</th><th>Action</th>
+<th>Name</th><th>Status</th><th>Adults</th><th>Kids 3–10</th>
+<th>Veg</th><th>Non-Veg</th><th>Vegan</th><th>Jain</th><th>Amount</th><th>Paid</th><th>Dates</th><th>Action</th>
 </tr></thead><tbody id="responseRows"></tbody></table></div>
       </div>
 
@@ -1593,7 +1637,15 @@ if(!window.supabase){
     </div>
 
     <div class="field"><label>Target Budget / Person ($)</label><input id="sBudget" type="number" value="50"></div>
-    <button class="btn primary" id="saveSettings">Publish Date Choices</button>
+
+    <h3 style="margin-top:18px">💵 Party Pricing</h3>
+    <div class="grid3">
+      <div class="field"><label>Adult Price ($)</label><input id="sAdultPrice" type="number" min="0" step="0.01" value="50"></div>
+      <div class="field"><label>Kids 3–10 Price ($)</label><input id="sKidPrice" type="number" min="0" step="0.01" value="25"></div>
+    </div>
+    <div class="notice">Family amount due is calculated automatically from these prices and the RSVP counts.</div>
+
+    <button class="btn primary" id="saveSettings">Save Party Settings</button>
   </div>
 </dialog>
 
@@ -1627,13 +1679,14 @@ if(window.supabase && typeof window.supabase.createClient==="function"){
 const DEFAULT_SETTINGS = {
   eventName: "Maniacs Annual Party 2026",
   budgetPerPerson: 50,
+  adultPrice: 50,
+  kidPrice: 25,
   dates: []
 };
 
 var partyFields = [
   ["adults","Adults"],
-  ["kids3to10","Kids age 3–10"],
-  ["kidsUnder3","Kids under 3"]
+  ["kids3to10","Kids age 3–10"]
 ];
 
 var foodFields = [
@@ -1655,7 +1708,7 @@ async function loadAll(){
   setStatus("Syncing…");
   try{
     const [sRes,rRes,vRes]=await Promise.all([
-      sb.from("party_settings").select("id,event_name,budget_per_person,candidate_dates,updated_at").eq("id",1).maybeSingle(),
+      sb.from("party_settings").select("id,event_name,budget_per_person,adult_price,kid_price,candidate_dates,updated_at").eq("id",1).maybeSingle(),
       sb.from("party_responses").select("*").order("updated_at",{ascending:false}),
       sb.from("party_venues").select("*").order("name",{ascending:true})
     ]);
@@ -1668,6 +1721,8 @@ async function loadAll(){
       settings={
         eventName:sRes.data.event_name||DEFAULT_SETTINGS.eventName,
         budgetPerPerson:Number(sRes.data.budget_per_person??50),
+        adultPrice:Number(sRes.data.adult_price??50),
+        kidPrice:Number(sRes.data.kid_price??25),
         dates:Array.isArray(sRes.data.candidate_dates)?[...sRes.data.candidate_dates].sort():[]
       };
     }else{
@@ -1708,7 +1763,6 @@ function dbResponseToUi(r){
     status:r.status,
     adults:Number(r.adults||0),
     kids3to10:Number(r.kids_3_to_10||0),
-    kidsUnder3:Number(r.kids_under_3||0),
     food:{
       vegetarian:Number(r.vegetarian||0),
       nonVegetarian:Number(r.non_vegetarian||0),
@@ -1717,6 +1771,7 @@ function dbResponseToUi(r){
     },
     dates:Array.isArray(r.available_dates)?r.available_dates:[],
     notes:r.notes||"",
+    paid:!!r.paid,
     enteredByAdmin:!!r.entered_by_admin,
     updatedAt:r.updated_at
   };
@@ -1729,13 +1784,14 @@ function uiResponseToDb(r){
     status:r.status,
     adults:r.adults,
     kids_3_to_10:r.kids3to10,
-    kids_under_3:r.kidsUnder3,
+    kids_under_3:0,
     vegetarian:r.food?.vegetarian||0,
     non_vegetarian:r.food?.nonVegetarian||0,
     vegan:r.food?.vegan||0,
     jain:r.food?.jain||0,
     available_dates:r.dates||[],
     notes:r.notes||"",
+    paid:!!r.paid,
     entered_by_admin:!!r.enteredByAdmin,
     updated_at:new Date().toISOString()
   };
@@ -1853,10 +1909,10 @@ function getFormResponse(){
     status: val("attendance"),
     adults:num("p_adults"),
     kids3to10:num("p_kids3to10"),
-    kidsUnder3:num("p_kidsUnder3"),
     food:Object.fromEntries(foodFields.map(([k])=>[k,num("f_"+k)])),
     dates:[...document.querySelectorAll(".rsvpDate:checked")].map(x=>x.value),
     notes:val("notes").trim(),
+    paid: editingResponseId ? !!responses.find(x=>x.id===editingResponseId)?.paid : false,
     enteredByAdmin:isAdmin,
     updatedAt:new Date().toISOString()
   };
@@ -1921,13 +1977,33 @@ saveRsvp.onclick=async()=>{
 function activeResponses(){return responses.filter(r=>r.status!=="NO")}
 function totals(){
   const a=activeResponses();
-  const t={families:a.length,adults:0,kids3to10:0,kidsUnder3:0,people:0,vegetarian:0,nonVegetarian:0,vegan:0,jain:0};
+  const t={families:a.length,adults:0,kids3to10:0,people:0,vegetarian:0,nonVegetarian:0,vegan:0,jain:0};
   a.forEach(r=>{
-    t.adults+=r.adults;t.kids3to10+=r.kids3to10;t.kidsUnder3+=r.kidsUnder3;
+    t.adults+=r.adults;t.kids3to10+=r.kids3to10;
     foodFields.forEach(([k])=>t[k]+=Number(r.food?.[k]||0));
   });
-  t.people=t.adults+t.kids3to10+t.kidsUnder3;
+  t.people=t.adults+t.kids3to10;
   return t;
+}
+
+function familyAmount(r){
+  return (Number(r.adults)||0)*Number(settings.adultPrice||0)
+    +(Number(r.kids3to10)||0)*Number(settings.kidPrice||0);
+}
+
+async function setFamilyPaid(id,paid){
+  try{
+    const {error}=await sb.from("party_responses").update({
+      paid:!!paid,
+      updated_at:new Date().toISOString()
+    }).eq("id",id);
+    if(error) throw error;
+    await loadAll();
+    toast(paid?"Marked paid":"Marked unpaid");
+  }catch(e){
+    console.error(e);
+    toast("Payment update failed: "+(e.message||e));
+  }
 }
 
 function renderDateFamilyDetails(){
@@ -1940,12 +2016,17 @@ function renderDateFamilyDetails(){
     return;
   }
 
-  box.innerHTML=settings.dates.map(d=>{
+  const pricing=`<div class="pricing-banner">
+    <span>Adult <b>${money(settings.adultPrice||0)}</b></span>
+    <span>Kids 3–10 <b>${money(settings.kidPrice||0)}</b></span>
+  </div>`;
+
+  box.innerHTML=pricing+settings.dates.map(d=>{
     const families=active
       .filter(r=>(r.dates||[]).includes(d))
       .sort((a,b)=>String(a.name||"").localeCompare(String(b.name||"")));
 
-    const people=families.reduce((s,r)=>s+(Number(r.adults)||0)+(Number(r.kids3to10)||0)+(Number(r.kidsUnder3)||0),0);
+    const people=families.reduce((s,r)=>s+(Number(r.adults)||0)+(Number(r.kids3to10)||0),0);
 
     return `
       <details class="date-family-block">
@@ -1966,15 +2047,16 @@ function renderDateFamilyDetails(){
                     <th>Family</th>
                     <th>Adults</th>
                     <th>Kids 3–10</th>
-                    <th>Under 3</th>
                     <th>Total</th>
+                    <th>Amount</th>
+                    <th>Payment</th>
                     <th>Food</th>
                     <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${families.map(r=>{
-                    const total=(Number(r.adults)||0)+(Number(r.kids3to10)||0)+(Number(r.kidsUnder3)||0);
+                    const total=(Number(r.adults)||0)+(Number(r.kids3to10)||0);
                     return `
                       <tr>
                         <td>
@@ -1991,8 +2073,14 @@ function renderDateFamilyDetails(){
                         </td>
                         <td>${r.adults||0}</td>
                         <td>${r.kids3to10||0}</td>
-                        <td>${r.kidsUnder3||0}</td>
                         <td><b>${total}</b></td>
+                        <td><b>${money(familyAmount(r))}</b></td>
+                        <td>
+                          <select class="payment-select ${r.paid?"paid":"unpaid"}" onchange="setFamilyPaid('${r.id}',this.value==='PAID')">
+                            <option value="UNPAID" ${!r.paid?"selected":""}>Unpaid</option>
+                            <option value="PAID" ${r.paid?"selected":""}>Paid</option>
+                          </select>
+                        </td>
                         <td>V ${r.food?.vegetarian||0} • NV ${r.food?.nonVegetarian||0} • Vegan ${r.food?.vegan||0} • Jain ${r.food?.jain||0}</td>
                         <td>
                           <div class="actions family-actions">
@@ -2011,16 +2099,40 @@ function renderDateFamilyDetails(){
   }).join("");
 }
 
+function renderCollectionSummary(){
+  const box=document.getElementById("collectionStats");
+  if(!box) return;
+
+  const families=activeResponses();
+  const expected=families.reduce((s,r)=>s+familyAmount(r),0);
+  const collected=families.filter(r=>r.paid).reduce((s,r)=>s+familyAmount(r),0);
+  const outstanding=Math.max(0,expected-collected);
+  const paidFamilies=families.filter(r=>r.paid).length;
+  const unpaidFamilies=families.filter(r=>!r.paid).length;
+
+  box.innerHTML=[
+    ["Expected Pool",money(expected)],
+    ["Collected",money(collected)],
+    ["Outstanding",money(outstanding)],
+    ["Paid Families",paidFamilies],
+    ["Unpaid Families",unpaidFamilies],
+    ["Total Families",families.length]
+  ].map(([l,n])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
+}
+
 function renderStats(){
   const t=totals();
+  const totalDue=activeResponses().reduce((s,r)=>s+familyAmount(r),0);
+  const totalPaid=activeResponses().filter(r=>r.paid).reduce((s,r)=>s+familyAmount(r),0);
   publicStats.innerHTML=[
-    ["People",t.people],["Adults",t.adults],["Kids",t.kids3to10+t.kidsUnder3],["Families",t.families],
-    ["Vegetarian",t.vegetarian],["Non-Veg",t.nonVegetarian],["Vegan",t.vegan],["Jain",t.jain]
+    ["People",t.people],["Adults",t.adults],["Kids",t.kids3to10],["Families",t.families],
+    ["Vegetarian",t.vegetarian],["Non-Veg",t.nonVegetarian],["Vegan",t.vegan],["Jain",t.jain],
+    ["Total Due",money(totalDue)],["Paid",money(totalPaid)]
   ].map(([l,n])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
   adminStats.innerHTML=publicStats.innerHTML;
 }
 function dateCounts(){
-  return settings.dates.map(d=>({date:d,count:activeResponses().filter(r=>r.dates.includes(d)).reduce((s,r)=>s+r.adults+r.kids3to10+r.kidsUnder3,0)}));
+  return settings.dates.map(d=>({date:d,count:activeResponses().filter(r=>r.dates.includes(d)).reduce((s,r)=>s+r.adults+r.kids3to10,0)}));
 }
 function renderPoll(){
   const dc=dateCounts(); const max=Math.max(1,...dc.map(x=>x.count));
@@ -2038,11 +2150,17 @@ function renderResponses(){
     </td>
     <td><input class="admin-mini-input" id="ar_adults_${r.id}" type="number" min="0" value="${r.adults}"></td>
     <td><input class="admin-mini-input" id="ar_kids_${r.id}" type="number" min="0" value="${r.kids3to10}"></td>
-    <td><input class="admin-mini-input" id="ar_under3_${r.id}" type="number" min="0" value="${r.kidsUnder3}"></td>
     <td><input class="admin-mini-input" id="ar_veg_${r.id}" type="number" min="0" value="${r.food?.vegetarian||0}"></td>
     <td><input class="admin-mini-input" id="ar_nonveg_${r.id}" type="number" min="0" value="${r.food?.nonVegetarian||0}"></td>
     <td><input class="admin-mini-input" id="ar_vegan_${r.id}" type="number" min="0" value="${r.food?.vegan||0}"></td>
     <td><input class="admin-mini-input" id="ar_jain_${r.id}" type="number" min="0" value="${r.food?.jain||0}"></td>
+    <td><b>${money(familyAmount(r))}</b></td>
+    <td>
+      <select class="admin-mini-input" id="ar_paid_${r.id}">
+        <option value="false" ${!r.paid?"selected":""}>Unpaid</option>
+        <option value="true" ${r.paid?"selected":""}>Paid</option>
+      </select>
+    </td>
     <td>${r.dates.map(d=>new Date(d+"T12:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric"})).join(", ")}</td>
     <td>
       <div class="actions">
@@ -2051,7 +2169,7 @@ function renderResponses(){
         <button class="btn sm ghost" onclick="deleteResponse('${r.id}')">Delete</button>
       </div>
     </td>
-  </tr>`).join(""):`<tr><td colspan="11" class="empty">No responses yet.</td></tr>`;
+  </tr>`).join(""):`<tr><td colspan="12" class="empty">No responses yet.</td></tr>`;
 }
 window.saveAdminRow=async id=>{
   const r=responses.find(x=>x.id===id);
@@ -2062,13 +2180,13 @@ window.saveAdminRow=async id=>{
     status:document.getElementById(`ar_status_${id}`).value,
     adults:Number(document.getElementById(`ar_adults_${id}`).value)||0,
     kids3to10:Number(document.getElementById(`ar_kids_${id}`).value)||0,
-    kidsUnder3:Number(document.getElementById(`ar_under3_${id}`).value)||0,
     food:{
       vegetarian:Number(document.getElementById(`ar_veg_${id}`).value)||0,
       nonVegetarian:Number(document.getElementById(`ar_nonveg_${id}`).value)||0,
       vegan:Number(document.getElementById(`ar_vegan_${id}`).value)||0,
       jain:Number(document.getElementById(`ar_jain_${id}`).value)||0
     },
+    paid:document.getElementById(`ar_paid_${id}`).value==="true",
     enteredByAdmin:true,
     updatedAt:new Date().toISOString()
   };
@@ -2210,7 +2328,7 @@ function renderBestCombos(){
 function renderAll(){
   document.title=settings.eventName;
   eventSubtitle.textContent=settings.eventName;
-  renderDates();renderStats();renderPoll();renderDateFamilyDetails();renderResponses();renderVenues();renderBestCombos();renderAdminDateEditor();
+  renderDates();renderStats();renderCollectionSummary();renderPoll();renderDateFamilyDetails();renderResponses();renderVenues();renderBestCombos();renderAdminDateEditor();
 }
 function showPage(page){
   document.querySelectorAll(".page").forEach(x=>x.classList.add("hidden"));
@@ -2270,10 +2388,12 @@ window.removeAdminDate=async(d)=>{
         id:1,
         event_name:settings.eventName||DEFAULT_SETTINGS.eventName,
         budget_per_person:Number(settings.budgetPerPerson||50),
-        candidate_dates:nextDates,
+        adult_price:Number(settings.adultPrice??50),
+        kid_price:Number(settings.kidPrice??25),
+          candidate_dates:nextDates,
         updated_at:new Date().toISOString()
       },{onConflict:"id"})
-      .select("id,event_name,budget_per_person,candidate_dates,updated_at")
+      .select("id,event_name,budget_per_person,adult_price,kid_price,candidate_dates,updated_at")
       .single();
 
     if(error) throw error;
@@ -2281,6 +2401,8 @@ window.removeAdminDate=async(d)=>{
     settings={
       eventName:data.event_name||settings.eventName,
       budgetPerPerson:Number(data.budget_per_person??settings.budgetPerPerson),
+      adultPrice:Number(data.adult_price??settings.adultPrice??50),
+      kidPrice:Number(data.kid_price??settings.kidPrice??25),
       dates:Array.isArray(data.candidate_dates)?[...data.candidate_dates].sort():[]
     };
 
@@ -2299,6 +2421,8 @@ window.removeAdminDate=async(d)=>{
 function openDateManager(){
   sEventName.value=settings.eventName;
   sBudget.value=settings.budgetPerPerson;
+  sAdultPrice.value=settings.adultPrice??50;
+  sKidPrice.value=settings.kidPrice??25;
   newPartyDate.value="";
   renderAdminDateEditor();
   settingsDialog.showModal();
@@ -2321,6 +2445,8 @@ addPartyDateBtn.onclick=async()=>{
       id:1,
       event_name:settings.eventName||DEFAULT_SETTINGS.eventName,
       budget_per_person:Number(settings.budgetPerPerson||50),
+      adult_price:Number(settings.adultPrice??50),
+      kid_price:Number(settings.kidPrice??25),
       candidate_dates:nextDates,
       updated_at:new Date().toISOString()
     };
@@ -2328,7 +2454,7 @@ addPartyDateBtn.onclick=async()=>{
     const {data,error}=await sb
       .from("party_settings")
       .upsert(payload,{onConflict:"id"})
-      .select("id,event_name,budget_per_person,candidate_dates,updated_at")
+      .select("id,event_name,budget_per_person,adult_price,kid_price,candidate_dates,updated_at")
       .single();
 
     if(error) throw error;
@@ -2338,6 +2464,8 @@ addPartyDateBtn.onclick=async()=>{
     settings={
       eventName:data.event_name||payload.event_name,
       budgetPerPerson:Number(data.budget_per_person??payload.budget_per_person),
+      adultPrice:Number(data.adult_price??settings.adultPrice??50),
+      kidPrice:Number(data.kid_price??settings.kidPrice??25),
       dates:[...data.candidate_dates].sort()
     };
 
@@ -2360,6 +2488,8 @@ saveSettings.onclick=async()=>{
   const next={
     eventName:sEventName.value.trim()||DEFAULT_SETTINGS.eventName,
     budgetPerPerson:Number(sBudget.value)||50,
+    adultPrice:Number(sAdultPrice.value)||0,
+    kidPrice:Number(sKidPrice.value)||0,
     dates:[...(settings.dates||[])].sort()
   };
 
@@ -2374,10 +2504,12 @@ saveSettings.onclick=async()=>{
         id:1,
         event_name:next.eventName,
         budget_per_person:next.budgetPerPerson,
+        adult_price:next.adultPrice,
+        kid_price:next.kidPrice,
         candidate_dates:next.dates,
         updated_at:new Date().toISOString()
       },{onConflict:"id"})
-      .select("id,event_name,budget_per_person,candidate_dates,updated_at")
+      .select("id,event_name,budget_per_person,adult_price,kid_price,candidate_dates,updated_at")
       .single();
 
     if(error) throw error;
@@ -2385,6 +2517,8 @@ saveSettings.onclick=async()=>{
     settings={
       eventName:data.event_name||next.eventName,
       budgetPerPerson:Number(data.budget_per_person??next.budgetPerPerson),
+      adultPrice:Number(data.adult_price??next.adultPrice),
+      kidPrice:Number(data.kid_price??next.kidPrice),
       dates:Array.isArray(data.candidate_dates)?[...data.candidate_dates].sort():[]
     };
 
