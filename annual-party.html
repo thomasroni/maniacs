@@ -1795,7 +1795,7 @@ if(!window.supabase){
           <h2>🎉 Party RSVP</h2>
           <div class="sub">Tell us who is attending and your food preferences.</div>
           <div class="field"><label>Member / Family Name</label><input id="memberName" placeholder="Enter your name"></div>
-          <div class="field"><label>Attendance</label><select id="attendance"><option value="YES">Yes — attending</option><option value="MAYBE">Maybe</option><option value="NO">No — cannot attend</option></select></div>
+          <div class="field"><label>Attendance</label><select id="attendance"><option value="YES">Yes — attending</option><option value="NO">No — cannot attend</option></select></div>
           <h3>Party Count</h3>
           <div id="partyCounters"></div>
         </div>
@@ -1829,7 +1829,7 @@ if(!window.supabase){
 
       <div class="card" style="margin-top:14px">
         <h2>📊 Date Preference</h2>
-        <div class="sub">Current responses from attending/maybe families.</div>
+        <div class="sub">Current responses from attending families.</div>
         <div id="pollBars"></div>
       </div>
 
@@ -2639,7 +2639,6 @@ function renderResponses(){
     <td>
       <select class="admin-mini-input" id="ar_status_${r.id}">
         <option value="YES" ${r.status==="YES"?"selected":""}>YES</option>
-        <option value="MAYBE" ${r.status==="MAYBE"?"selected":""}>MAYBE</option>
         <option value="NO" ${r.status==="NO"?"selected":""}>NO</option>
       </select>
     </td>
