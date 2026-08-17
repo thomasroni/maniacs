@@ -1295,6 +1295,11 @@ footer{
 
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+if(!window.supabase){
+  document.write('<script src="https://unpkg.com/@supabase/supabase-js@2"><\/script>');
+}
+</script>
 </head>
 <body>
 <div class="wrap" id="app">
@@ -1477,7 +1482,17 @@ const ADMIN_PIN = "2026"; // CHANGE BEFORE PUBLISHING
 
 const SUPABASE_URL="https://pfwkauorjzzcnuvwujxj.supabase.co";
 const SUPABASE_KEY="sb_publishable_1gUsJnbBzdphciR-WcYy7w_1Vn-n-X1";
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let sb=null;
+if(window.supabase && typeof window.supabase.createClient==="function"){
+  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+}else{
+  const s=document.getElementById("status");
+  if(s){
+    s.textContent="Library error";
+    s.classList.add("bad");
+    s.title="Supabase JavaScript library could not be loaded.";
+  }
+}
 
 const DEFAULT_SETTINGS = {
   eventName: "Maniacs Annual Party 2026",
@@ -1493,6 +1508,7 @@ let isAdmin = false;
 let syncing = false;
 
 async function loadAll(){
+  if(!sb){ setStatus("Library error",false); return; }
   setStatus("Syncing…");
   try{
     const [sRes,rRes,vRes]=await Promise.all([
@@ -2118,28 +2134,33 @@ exportCsv.onclick=()=>{
 };
 
 attendance.onchange=validateFood;
-status.onclick=()=>{ setStatus("Connecting…"); loadAll(); };
+status.onclick=()=>{ if(!sb) return toast("Supabase library did not load. Refresh the page."); setStatus("Connecting…"); loadAll(); };
 status.title="Tap to retry database connection";
 
 
 // Start the database connection first so UI rendering cannot block Supabase initialization.
-setStatus("Connecting…");
-loadAll();
+if(sb){
+  setStatus("Connecting…");
+  loadAll();
+}else{
+  setStatus("Library error",false);
+}
 
 try {
   renderCounters();
   renderAll();
 } catch (e) {
   console.error("Initial UI render failed", e);
-  // loadAll() is already running; do not prevent the database connection from completing.
 }
 
-// Refresh automatically when another member changes shared data.
-sb.channel("party-live")
-  .on("postgres_changes",{event:"*",schema:"public",table:"party_responses"},()=>loadAll())
-  .on("postgres_changes",{event:"*",schema:"public",table:"party_venues"},()=>loadAll())
-  .on("postgres_changes",{event:"*",schema:"public",table:"party_settings"},()=>loadAll())
-  .subscribe();
+if(sb){
+  // Refresh automatically when another member changes shared data.
+  sb.channel("party-live")
+    .on("postgres_changes",{event:"*",schema:"public",table:"party_responses"},()=>loadAll())
+    .on("postgres_changes",{event:"*",schema:"public",table:"party_venues"},()=>loadAll())
+    .on("postgres_changes",{event:"*",schema:"public",table:"party_settings"},()=>loadAll())
+    .subscribe();
+}
 </script>
 </body>
 </html>
