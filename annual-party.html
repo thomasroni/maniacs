@@ -2478,6 +2478,66 @@ function openDateManager(){
   settingsDialog.showModal();
 }
 
+
+const pricingBtnEl=document.getElementById("pricingBtn");
+const savePricingEl=document.getElementById("savePricing");
+const adminAdultPriceEl=document.getElementById("adminAdultPrice");
+const adminKidPriceEl=document.getElementById("adminKidPrice");
+
+if(pricingBtnEl){
+  pricingBtnEl.onclick=()=>{
+    const card=savePricingEl?.closest(".card");
+    if(card){
+      card.scrollIntoView({behavior:"smooth",block:"center"});
+      adminAdultPriceEl?.focus();
+    }
+  };
+}
+
+if(savePricingEl){
+  savePricingEl.onclick=async()=>{
+    const adultPrice=Math.max(0,Number(adminAdultPriceEl?.value)||0);
+    const kidPrice=Math.max(0,Number(adminKidPriceEl?.value)||0);
+
+    savePricingEl.disabled=true;
+    const oldText=savePricingEl.textContent;
+    savePricingEl.textContent="Saving…";
+    setStatus("Saving pricing…");
+
+    try{
+      const {data,error}=await sb
+        .from("party_settings")
+        .update({
+          adult_price:adultPrice,
+          kid_price:kidPrice,
+          updated_at:new Date().toISOString()
+        })
+        .eq("id",1)
+        .select("id,adult_price,kid_price")
+        .single();
+
+      if(error) throw error;
+      if(!data) throw new Error("Supabase did not return the saved pricing.");
+
+      settings.adultPrice=Number(data.adult_price??adultPrice);
+      settings.kidPrice=Number(data.kid_price??kidPrice);
+
+      // Immediately refresh every price-dependent part of the UI.
+      refreshPricingDependentViews();
+
+      setStatus("Connected");
+      toast(`Pricing saved: Adult ${money(settings.adultPrice)} • Kids ${money(settings.kidPrice)}`);
+    }catch(e){
+      console.error("Pricing save failed",e);
+      setStatus("Save failed",false);
+      toast("Pricing save failed: "+(e.message||e));
+    }finally{
+      savePricingEl.disabled=false;
+      savePricingEl.textContent=oldText||"Save Pricing";
+    }
+  };
+}
+
 eventSettings.onclick=openDateManager;
 document.getElementById("manageDatesDashboard").onclick=openDateManager;
 
