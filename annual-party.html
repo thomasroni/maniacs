@@ -1695,6 +1695,71 @@ footer{
   }
 }
 
+
+.best-date-summary-card{
+  border:2px solid #d71920;
+  background:linear-gradient(135deg,#fff8f8,#fffdf8);
+  border-radius:16px;
+  padding:15px;
+  box-shadow:0 7px 18px rgba(215,25,32,.07);
+}
+.best-date-kicker{
+  display:block;
+  color:#b30f16;
+  font-size:12px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  margin-bottom:5px;
+}
+.best-date-main strong{
+  display:block;
+  font-size:22px;
+  color:#222;
+}
+.best-date-main small{
+  display:block;
+  margin-top:5px;
+  color:#68717a!important;
+}
+.best-date-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  margin-top:13px;
+}
+.best-date-grid>div{
+  background:#fff;
+  border:1px solid #e8e3df;
+  border-radius:10px;
+  padding:9px 6px;
+  text-align:center;
+}
+.best-date-grid span{
+  display:block;
+  font-size:11px;
+  color:#7b8289;
+}
+.best-date-grid b{
+  display:block;
+  margin-top:3px;
+  font-size:18px;
+  color:#d71920;
+}
+@media(max-width:520px){
+  .best-date-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+
+.top-picks-list{
+  display:grid;
+  gap:12px;
+}
+.tied-date-pick + .tied-date-pick{
+  border-top:1px solid #eadede;
+  padding-top:13px;
+}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -1770,6 +1835,7 @@ if(!window.supabase){
 
       <div class="card" style="margin-top:14px">
         <h2>Current RSVP Summary</h2>
+        <div id="bestDateSummary" style="margin-bottom:14px"></div>
         <div class="stats" id="publicStats"></div>
       </div>
     </section>
@@ -2425,6 +2491,7 @@ function refreshPricingDependentViews(){
   renderAdminPricing();
   renderCollectionSummary();
   renderStats();
+  renderBestDateSummary();
   renderPoll();
   renderTopParticipationDate();
   renderDateFamilyDetails();
@@ -2466,6 +2533,53 @@ function renderCollectionSummary(){
     ["Unpaid Families",unpaidFamilies],
     ["Total Families",families.length]
   ].map(([l,n])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
+}
+
+
+function renderBestDateSummary(){
+  const box=document.getElementById("bestDateSummary");
+  if(!box) return;
+
+  const ranked=participationByDate();
+  if(!ranked.length || ranked[0].count===0){
+    box.innerHTML=`<div class="empty">No date preference responses yet.</div>`;
+    return;
+  }
+
+  const maxCount=ranked[0].count;
+  const topDates=ranked.filter(x=>x.count===maxCount);
+  const allPeople=activeResponses().reduce((s,r)=>s+(Number(r.adults)||0)+(Number(r.kids3to10)||0),0);
+
+  box.innerHTML=`
+    <div class="best-date-summary-card">
+      <span class="best-date-kicker">🏆 ${topDates.length>1?"Top Date Picks — Tie":"Best Date Pick"}</span>
+      <div class="top-picks-list">
+        ${topDates.map(top=>{
+          const families=activeResponses().filter(r=>(r.dates||[]).includes(top.date));
+          const pct=allPeople ? Math.round((top.count/allPeople)*100) : 0;
+          const food=families.reduce((acc,r)=>{
+            acc.vegetarian+=Number(r.food?.vegetarian||0);
+            acc.nonVegetarian+=Number(r.food?.nonVegetarian||0);
+            acc.vegan+=Number(r.food?.vegan||0);
+            acc.jain+=Number(r.food?.jain||0);
+            return acc;
+          },{vegetarian:0,nonVegetarian:0,vegan:0,jain:0});
+
+          return `<div class="tied-date-pick">
+            <div class="best-date-main">
+              <strong>${fmtDate(top.date)}</strong>
+              <small>${top.count} people • ${top.families} ${top.families===1?"family":"families"} • ${pct}% of current attendees</small>
+            </div>
+            <div class="best-date-grid">
+              <div><span>Veg</span><b>${food.vegetarian}</b></div>
+              <div><span>Non-Veg</span><b>${food.nonVegetarian}</b></div>
+              <div><span>Vegan</span><b>${food.vegan}</b></div>
+              <div><span>Jain</span><b>${food.jain}</b></div>
+            </div>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`;
 }
 
 function renderStats(){
