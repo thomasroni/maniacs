@@ -1245,6 +1245,32 @@ footer{
   background:#fafafa;
 }
 
+
+.admin-edit-table{
+  min-width:1180px!important;
+}
+.admin-mini-input{
+  width:76px!important;
+  min-width:64px!important;
+  padding:7px 8px!important;
+  border-radius:8px!important;
+  font-size:13px!important;
+}
+.admin-edit-table select.admin-mini-input{
+  width:92px!important;
+}
+.admin-edit-table td{
+  vertical-align:middle!important;
+}
+.admin-edit-table .actions{
+  min-width:185px;
+}
+@media(max-width:720px){
+  .admin-mini-input{
+    width:68px!important;
+  }
+}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1334,7 +1360,10 @@ footer{
 
       <div class="card" style="margin-top:14px">
         <div class="between"><h3>Responses</h3><button class="btn sm ghost" id="exportCsv">Export CSV</button></div>
-        <div class="tablewrap"><table><thead><tr><th>Name</th><th>Status</th><th>Adults</th><th>Kids</th><th>Food</th><th>Dates</th><th>Action</th></tr></thead><tbody id="responseRows"></tbody></table></div>
+        <div class="tablewrap"><table class="admin-edit-table"><thead><tr>
+<th>Name</th><th>Status</th><th>Adults</th><th>Kids 3–10</th><th>Under 3</th>
+<th>Veg</th><th>Non-Veg</th><th>Vegan</th><th>Jain</th><th>Dates</th><th>Action</th>
+</tr></thead><tbody id="responseRows"></tbody></table></div>
       </div>
 
       <div class="card" style="margin-top:14px">
@@ -1685,15 +1714,70 @@ function renderPoll(){
   pollBars.innerHTML=dc.map(x=>`<div class="barrow"><span>${new Date(x.date+"T12:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric"})}</span><div class="bar"><i style="width:${x.count/max*100}%"></i></div><b>${x.count}</b></div>`).join("") || `<div class="empty">No dates configured.</div>`;
 }
 function renderResponses(){
-  responseRows.innerHTML=responses.length?responses.map(r=>`<tr>
+  responseRows.innerHTML=responses.length?responses.map(r=>`<tr data-rid="${r.id}">
     <td><b>${esc(r.name)}</b>${r.notes?`<br><small>${esc(r.notes)}</small>`:""}</td>
-    <td><span class="pill ${r.status==="YES"?"good":r.status==="NO"?"bad":"warn"}">${r.status}</span></td>
-    <td>${r.adults}</td><td>${r.kids3to10+r.kidsUnder3}</td>
-    <td>V ${r.food?.vegetarian||0} • NV ${r.food?.nonVegetarian||0} • Vegan ${r.food?.vegan||0} • Jain ${r.food?.jain||0}</td>
+    <td>
+      <select class="admin-mini-input" id="ar_status_${r.id}">
+        <option value="YES" ${r.status==="YES"?"selected":""}>YES</option>
+        <option value="MAYBE" ${r.status==="MAYBE"?"selected":""}>MAYBE</option>
+        <option value="NO" ${r.status==="NO"?"selected":""}>NO</option>
+      </select>
+    </td>
+    <td><input class="admin-mini-input" id="ar_adults_${r.id}" type="number" min="0" value="${r.adults}"></td>
+    <td><input class="admin-mini-input" id="ar_kids_${r.id}" type="number" min="0" value="${r.kids3to10}"></td>
+    <td><input class="admin-mini-input" id="ar_under3_${r.id}" type="number" min="0" value="${r.kidsUnder3}"></td>
+    <td><input class="admin-mini-input" id="ar_veg_${r.id}" type="number" min="0" value="${r.food?.vegetarian||0}"></td>
+    <td><input class="admin-mini-input" id="ar_nonveg_${r.id}" type="number" min="0" value="${r.food?.nonVegetarian||0}"></td>
+    <td><input class="admin-mini-input" id="ar_vegan_${r.id}" type="number" min="0" value="${r.food?.vegan||0}"></td>
+    <td><input class="admin-mini-input" id="ar_jain_${r.id}" type="number" min="0" value="${r.food?.jain||0}"></td>
     <td>${r.dates.map(d=>new Date(d+"T12:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric"})).join(", ")}</td>
-    <td><div class="actions"><button class="btn sm ghost" onclick="editResponse('${r.id}')">Edit</button><button class="btn sm ghost" onclick="deleteResponse('${r.id}')">Delete</button></div></td>
-  </tr>`).join(""):`<tr><td colspan="7" class="empty">No responses yet.</td></tr>`;
+    <td>
+      <div class="actions">
+        <button class="btn sm good" onclick="saveAdminRow('${r.id}')">Save</button>
+        <button class="btn sm ghost" onclick="editResponse('${r.id}')">Full Edit</button>
+        <button class="btn sm ghost" onclick="deleteResponse('${r.id}')">Delete</button>
+      </div>
+    </td>
+  </tr>`).join(""):`<tr><td colspan="11" class="empty">No responses yet.</td></tr>`;
 }
+window.saveAdminRow=async id=>{
+  const r=responses.find(x=>x.id===id);
+  if(!r) return;
+
+  const updated={
+    ...r,
+    status:document.getElementById(`ar_status_${id}`).value,
+    adults:Number(document.getElementById(`ar_adults_${id}`).value)||0,
+    kids3to10:Number(document.getElementById(`ar_kids_${id}`).value)||0,
+    kidsUnder3:Number(document.getElementById(`ar_under3_${id}`).value)||0,
+    food:{
+      vegetarian:Number(document.getElementById(`ar_veg_${id}`).value)||0,
+      nonVegetarian:Number(document.getElementById(`ar_nonveg_${id}`).value)||0,
+      vegan:Number(document.getElementById(`ar_vegan_${id}`).value)||0,
+      jain:Number(document.getElementById(`ar_jain_${id}`).value)||0
+    },
+    enteredByAdmin:true,
+    updatedAt:new Date().toISOString()
+  };
+
+  const mealPeople=updated.adults+updated.kids3to10;
+  const foodTotal=updated.food.vegetarian+updated.food.nonVegetarian+updated.food.vegan+updated.food.jain;
+
+  if(updated.status!=="NO" && mealPeople!==foodTotal){
+    return toast(`Food count (${foodTotal}) must match Adults + Kids 3–10 (${mealPeople})`);
+  }
+
+  try{
+    const {error}=await sb.from("party_responses").upsert(uiResponseToDb(updated),{onConflict:"id"});
+    if(error) throw error;
+    await loadAll();
+    toast("Participant updated");
+  }catch(e){
+    console.error(e);
+    toast("Update failed: "+(e.message||e));
+  }
+};
+
 window.editResponse=id=>{
   const r=responses.find(x=>x.id===id); if(!r)return;
   editingResponseId=id; memberName.value=r.name;attendance.value=r.status;notes.value=r.notes||"";
