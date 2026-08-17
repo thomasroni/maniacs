@@ -1553,6 +1553,132 @@ footer{
   .history-event-card{align-items:flex-start}
 }
 
+
+/* =========================================================
+   MOBILE HEADER ALIGNMENT FIX
+   Row 1: logo + title
+   Row 2: year selector + status + admin
+   ========================================================= */
+@media(max-width:720px){
+  header{
+    padding:14px 14px 10px!important;
+  }
+
+  .headrow{
+    display:flex!important;
+    flex-wrap:wrap!important;
+    align-items:center!important;
+    gap:12px!important;
+  }
+
+  .brand{
+    width:100%!important;
+    min-width:0!important;
+    display:grid!important;
+    grid-template-columns:58px minmax(0,1fr)!important;
+    align-items:center!important;
+    gap:12px!important;
+  }
+
+  .brand .logo{
+    width:52px!important;
+    height:52px!important;
+    flex:0 0 52px!important;
+  }
+
+  .brand>div:last-child{
+    min-width:0!important;
+  }
+
+  .brand h1{
+    margin:0!important;
+    font-size:21px!important;
+    line-height:1.15!important;
+    white-space:normal!important;
+    word-break:normal!important;
+  }
+
+  .brand small{
+    font-size:13px!important;
+    line-height:1.35!important;
+  }
+
+  .holidayTag{
+    display:inline-block!important;
+    margin-top:3px!important;
+  }
+
+  .headrow>.row{
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:minmax(105px,1fr) minmax(112px,auto) minmax(76px,auto)!important;
+    align-items:center!important;
+    gap:8px!important;
+  }
+
+  .event-selector{
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:42px!important;
+    padding:7px 8px!important;
+    font-size:12px!important;
+  }
+
+  .status{
+    width:100%!important;
+    min-width:0!important;
+    padding:9px 8px!important;
+    font-size:11px!important;
+    text-align:center!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+
+  #adminBtn{
+    width:100%!important;
+    min-width:0!important;
+    height:42px!important;
+    padding:8px 7px!important;
+    font-size:12px!important;
+    white-space:nowrap!important;
+  }
+
+  .tabs{
+    width:100%!important;
+    margin-top:12px!important;
+    padding-top:9px!important;
+    justify-content:flex-start!important;
+  }
+
+  .tab{
+    flex:0 0 auto!important;
+    padding:10px 13px!important;
+    font-size:13px!important;
+  }
+
+  main::before{
+    margin-top:16px!important;
+  }
+}
+
+@media(max-width:390px){
+  .headrow>.row{
+    grid-template-columns:minmax(92px,1fr) minmax(103px,1fr) 72px!important;
+    gap:6px!important;
+  }
+
+  .event-selector,
+  .status,
+  #adminBtn{
+    font-size:10.5px!important;
+  }
+
+  .brand h1{
+    font-size:19px!important;
+  }
+}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
