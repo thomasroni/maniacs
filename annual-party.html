@@ -1419,7 +1419,7 @@ footer{
   <div class="modalhead"><b>Manage Party Dates</b><button class="x" onclick="settingsDialog.close()">×</button></div>
   <div class="modalbody">
     <div class="field"><label>Event Name</label><input id="sEventName"></div>
-    <div class="notice">Only admins can create or remove date choices. Members only see the dates you publish here.</div>
+    <div class="notice">Only admins can create or remove date choices. Adding or removing a date saves immediately to Supabase, and members will see those saved dates.</div>
 
     <div class="field">
       <label>Add Party Date</label>
@@ -1925,9 +1925,28 @@ function renderAdminDateEditor(){
   if(document.getElementById("sDates")) sDates.value=dates.join("\n");
 }
 
-window.removeAdminDate=(d)=>{
-  settings.dates=(settings.dates||[]).filter(x=>x!==d);
-  renderAdminDateEditor();
+window.removeAdminDate=async(d)=>{
+  const nextDates=(settings.dates||[]).filter(x=>x!==d);
+  try{
+    const {data,error}=await sb.from("party_settings")
+      .update({
+        candidate_dates:nextDates,
+        updated_at:new Date().toISOString()
+      })
+      .eq("id",1)
+      .select("candidate_dates")
+      .single();
+
+    if(error) throw error;
+    settings.dates=Array.isArray(data?.candidate_dates)?data.candidate_dates:nextDates;
+    renderAdminDateEditor();
+    renderDates();
+    renderPoll();
+    toast("Date removed");
+  }catch(e){
+    console.error("Remove date failed",e);
+    toast("Could not remove date: "+(e.message||e));
+  }
 };
 
 function openDateManager(){
@@ -1941,14 +1960,66 @@ function openDateManager(){
 eventSettings.onclick=openDateManager;
 document.getElementById("manageDatesDashboard").onclick=openDateManager;
 
-addPartyDateBtn.onclick=()=>{
+addPartyDateBtn.onclick=async()=>{
   const d=newPartyDate.value;
   if(!d) return toast("Choose a date first");
+
   const dates=new Set(settings.dates||[]);
   dates.add(d);
-  settings.dates=[...dates].sort();
-  newPartyDate.value="";
-  renderAdminDateEditor();
+  const nextDates=[...dates].sort();
+
+  addPartyDateBtn.disabled=true;
+  addPartyDateBtn.textContent="Saving…";
+
+  try{
+    // Update the single settings row and immediately read back what Supabase stored.
+    let result=await sb.from("party_settings")
+      .update({
+        candidate_dates:nextDates,
+        updated_at:new Date().toISOString()
+      })
+      .eq("id",1)
+      .select("id,candidate_dates")
+      .maybeSingle();
+
+    if(result.error) throw result.error;
+
+    // If row id=1 somehow does not exist, create it.
+    if(!result.data){
+      result=await sb.from("party_settings")
+        .insert({
+          id:1,
+          event_name:settings.eventName||DEFAULT_SETTINGS.eventName,
+          budget_per_person:settings.budgetPerPerson||50,
+          candidate_dates:nextDates,
+          updated_at:new Date().toISOString()
+        })
+        .select("id,candidate_dates")
+        .single();
+      if(result.error) throw result.error;
+    }
+
+    const savedDates=Array.isArray(result.data?.candidate_dates)
+      ? result.data.candidate_dates
+      : [];
+
+    if(!savedDates.includes(d)){
+      throw new Error("Supabase did not return the newly added date.");
+    }
+
+    settings.dates=savedDates.sort();
+    newPartyDate.value="";
+    renderAdminDateEditor();
+    renderDates();
+    renderPoll();
+    toast("Date saved to database");
+  }catch(e){
+    console.error("Add date failed",e);
+    toast("Date save failed: "+(e.message||e));
+  }finally{
+    addPartyDateBtn.disabled=false;
+    addPartyDateBtn.textContent="+ Add Date";
+  }
 };
 saveSettings.onclick=async()=>{
   const dates=[...(settings.dates||[])].sort();
@@ -1957,20 +2028,39 @@ saveSettings.onclick=async()=>{
     budgetPerPerson:Number(sBudget.value)||50,
     dates
   };
+
+  saveSettings.disabled=true;
+  saveSettings.textContent="Saving…";
+
   try{
-    const {error}=await sb.from("party_settings").upsert({
+    const {data,error}=await sb.from("party_settings").upsert({
       id:1,
       event_name:next.eventName,
       budget_per_person:next.budgetPerPerson,
       candidate_dates:next.dates,
       updated_at:new Date().toISOString()
-    },{onConflict:"id"});
+    },{onConflict:"id"})
+    .select("id,event_name,budget_per_person,candidate_dates")
+    .single();
+
     if(error) throw error;
-    settings=next;
+
+    settings={
+      eventName:data.event_name||next.eventName,
+      budgetPerPerson:Number(data.budget_per_person??next.budgetPerPerson),
+      dates:Array.isArray(data.candidate_dates)?data.candidate_dates:[]
+    };
+
     settingsDialog.close();
-    await loadAll();
-    toast(dates.length ? "Date choices published" : "All date choices cleared");
-  }catch(e){toast("Settings save failed: "+(e.message||e))}
+    renderAll();
+    toast("Party settings saved to database");
+  }catch(e){
+    console.error("Settings save failed",e);
+    toast("Settings save failed: "+(e.message||e));
+  }finally{
+    saveSettings.disabled=false;
+    saveSettings.textContent="Publish Date Choices";
+  }
 };
 
 exportCsv.onclick=()=>{
