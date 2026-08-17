@@ -1514,6 +1514,19 @@ const DEFAULT_SETTINGS = {
   dates: []
 };
 
+var partyFields = [
+  ["adults","Adults"],
+  ["kids3to10","Kids age 3–10"],
+  ["kidsUnder3","Kids under 3"]
+];
+
+var foodFields = [
+  ["vegetarian","Vegetarian"],
+  ["nonVegetarian","Non-Vegetarian"],
+  ["vegan","Vegan"],
+  ["jain","Jain"]
+];
+
 let settings = structuredClone(DEFAULT_SETTINGS);
 let responses = [];
 let venues = [];
@@ -1665,18 +1678,14 @@ function val(id){return document.getElementById(id)?.value??""}
 function num(id){return Number(val(id))||0}
 function checked(id){return !!document.getElementById(id)?.checked}
 
-const partyFields = [
-  ["adults","Adults"],
-  ["kids3to10","Kids age 3–10"],
-  ["kidsUnder3","Kids under 3"]
-];
 
-const foodFields = [
-  ["vegetarian","Vegetarian"],
-  ["nonVegetarian","Non-Vegetarian"],
-  ["vegan","Vegan"],
-  ["jain","Jain"]
-];
+function ensureRsvpCounters(){
+  renderCounters();
+  const p=document.getElementById("partyCounters");
+  const f=document.getElementById("foodCounters");
+  if(p && !p.children.length) p.innerHTML='<div class="notice warn">Party count controls could not load. Please refresh.</div>';
+  if(f && !f.children.length) f.innerHTML='<div class="notice warn">Food preference controls could not load. Please refresh.</div>';
+}
 
 function renderCounters(){
   const partyBox=document.getElementById("partyCounters");
@@ -2189,7 +2198,7 @@ if(sb){
 }
 
 try {
-  renderCounters();
+  ensureRsvpCounters();
   renderAll();
 } catch (e) {
   console.error("Initial UI render failed", e);
