@@ -1307,6 +1307,101 @@ footer{
   .counter input{width:58px!important;height:39px!important}
 }
 
+
+.date-family-block{
+  border:1px solid #e1e5e8;
+  border-radius:14px;
+  margin:10px 0;
+  background:#fff;
+  overflow:hidden;
+}
+.date-family-block>summary{
+  list-style:none;
+  cursor:pointer;
+  padding:14px 15px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  background:#fff;
+}
+.date-family-block>summary::-webkit-details-marker{display:none}
+.date-family-block>summary strong{
+  display:block;
+  font-size:16px;
+  color:#24292f;
+}
+.date-family-block>summary small{
+  display:block;
+  margin-top:4px;
+  color:#7a838c!important;
+}
+.date-family-block[open]>summary{
+  background:#fff8f8;
+  border-bottom:1px solid #f0dddd;
+}
+.date-family-chevron{
+  color:#d71920;
+  font-size:20px;
+  font-weight:900;
+}
+.date-family-body{padding:12px}
+.family-table-wrap{
+  overflow:auto;
+  border:1px solid #e6e9ec;
+  border-radius:12px;
+}
+.family-table{
+  min-width:760px;
+}
+.family-food-details>summary{
+  cursor:pointer;
+  color:#b90f16;
+  text-decoration:underline;
+  text-underline-offset:2px;
+}
+.family-food-details>summary::-webkit-details-marker{
+  color:#d71920;
+}
+.family-food-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(90px,1fr));
+  gap:8px;
+  margin:10px 0 4px;
+  min-width:420px;
+}
+.family-food-grid>div{
+  background:#fafafa;
+  border:1px solid #e7e9eb;
+  border-radius:9px;
+  padding:9px;
+  text-align:center;
+}
+.family-food-grid span{
+  display:block;
+  font-size:11px;
+  color:#777f87;
+}
+.family-food-grid b{
+  display:block;
+  margin-top:4px;
+  font-size:18px;
+  color:#d71920;
+}
+.family-note{
+  margin-top:8px;
+  padding:8px 10px;
+  background:#fff7e8;
+  border:1px solid #f1dfb6;
+  border-radius:8px;
+  font-size:12px;
+  color:#735b20;
+}
+@media(max-width:600px){
+  .date-family-block>summary{padding:13px 12px}
+  .family-table{min-width:690px}
+}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -1371,6 +1466,12 @@ if(!window.supabase){
       <div class="card" style="margin-top:14px">
         <h2>Current RSVP Summary</h2>
         <div class="stats" id="publicStats"></div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h2>👨‍👩‍👧‍👦 Families by Date</h2>
+        <div class="sub">Tap a date to see which families are available. Tap a family to see the food breakdown.</div>
+        <div id="dateFamilyDetails"></div>
       </div>
     </section>
 
@@ -1787,6 +1888,81 @@ function totals(){
   t.people=t.adults+t.kids3to10+t.kidsUnder3;
   return t;
 }
+
+function renderDateFamilyDetails(){
+  const box=document.getElementById("dateFamilyDetails");
+  if(!box) return;
+
+  const active=activeResponses();
+  if(!settings.dates?.length){
+    box.innerHTML=`<div class="empty">No party dates have been published yet.</div>`;
+    return;
+  }
+
+  box.innerHTML=settings.dates.map(d=>{
+    const families=active
+      .filter(r=>(r.dates||[]).includes(d))
+      .sort((a,b)=>String(a.name||"").localeCompare(String(b.name||"")));
+
+    const people=families.reduce((s,r)=>s+(Number(r.adults)||0)+(Number(r.kids3to10)||0)+(Number(r.kidsUnder3)||0),0);
+
+    return `
+      <details class="date-family-block">
+        <summary>
+          <div>
+            <strong>${fmtDate(d)}</strong>
+            <small>${families.length} ${families.length===1?"family":"families"} • ${people} people</small>
+          </div>
+          <span class="date-family-chevron">⌄</span>
+        </summary>
+
+        <div class="date-family-body">
+          ${families.length ? `
+            <div class="family-table-wrap">
+              <table class="family-table">
+                <thead>
+                  <tr>
+                    <th>Family</th>
+                    <th>Adults</th>
+                    <th>Kids 3–10</th>
+                    <th>Under 3</th>
+                    <th>Total</th>
+                    <th>Food</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${families.map(r=>{
+                    const total=(Number(r.adults)||0)+(Number(r.kids3to10)||0)+(Number(r.kidsUnder3)||0);
+                    return `
+                      <tr>
+                        <td>
+                          <details class="family-food-details">
+                            <summary><b>${esc(r.name)}</b></summary>
+                            <div class="family-food-grid">
+                              <div><span>Vegetarian</span><b>${r.food?.vegetarian||0}</b></div>
+                              <div><span>Non-Veg</span><b>${r.food?.nonVegetarian||0}</b></div>
+                              <div><span>Vegan</span><b>${r.food?.vegan||0}</b></div>
+                              <div><span>Jain</span><b>${r.food?.jain||0}</b></div>
+                            </div>
+                            ${r.notes?`<div class="family-note">${esc(r.notes)}</div>`:""}
+                          </details>
+                        </td>
+                        <td>${r.adults||0}</td>
+                        <td>${r.kids3to10||0}</td>
+                        <td>${r.kidsUnder3||0}</td>
+                        <td><b>${total}</b></td>
+                        <td>V ${r.food?.vegetarian||0} • NV ${r.food?.nonVegetarian||0} • Vegan ${r.food?.vegan||0} • Jain ${r.food?.jain||0}</td>
+                      </tr>`;
+                  }).join("")}
+                </tbody>
+              </table>
+            </div>
+          `:`<div class="empty">No families selected this date yet.</div>`}
+        </div>
+      </details>`;
+  }).join("");
+}
+
 function renderStats(){
   const t=totals();
   publicStats.innerHTML=[
@@ -1985,7 +2161,7 @@ function renderBestCombos(){
 function renderAll(){
   document.title=settings.eventName;
   eventSubtitle.textContent=settings.eventName;
-  renderDates();renderStats();renderPoll();renderResponses();renderVenues();renderBestCombos();renderAdminDateEditor();
+  renderDates();renderStats();renderPoll();renderDateFamilyDetails();renderResponses();renderVenues();renderBestCombos();renderAdminDateEditor();
 }
 function showPage(page){
   document.querySelectorAll(".page").forEach(x=>x.classList.add("hidden"));
