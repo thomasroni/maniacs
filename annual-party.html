@@ -1402,6 +1402,20 @@ footer{
   .family-table{min-width:690px}
 }
 
+
+.family-actions{display:flex;gap:6px;flex-wrap:nowrap}
+.family-actions .btn{white-space:nowrap}
+.family-delete{
+  color:#b42318!important;
+  border-color:#efc3bf!important;
+  background:#fff7f6!important;
+}
+.family-delete:hover{background:#feeceb!important}
+.family-table{min-width:850px!important}
+@media(max-width:600px){
+  .family-table{min-width:820px!important}
+}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -1418,15 +1432,15 @@ if(!window.supabase){
       <div class="row"><span id="status" class="status">Connecting…</span><button class="btn sm ghost" id="adminBtn">Admin</button></div>
     </div>
     <div class="tabs">
-      <button class="tab active" data-page="rsvp">RSVP</button>
-      <button class="tab" data-page="poll">Date Poll</button>
+      <button class="tab active" data-page="poll">Date Poll</button>
+      <button class="tab" data-page="rsvp">RSVP</button>
       <button class="tab admin-only" data-page="venues">Venues</button>
       <button class="tab admin-only" data-page="dashboard">Dashboard</button>
     </div>
   </header>
 
   <main>
-    <section id="page-rsvp" class="page">
+    <section id="page-rsvp" class="page hidden">
       <div class="grid2">
         <div class="card">
           <h2>🎉 Party RSVP</h2>
@@ -1457,21 +1471,22 @@ if(!window.supabase){
       </div>
     </section>
 
-    <section id="page-poll" class="page hidden">
+    <section id="page-poll" class="page">
       <div class="card">
+        <h2>👨‍👩‍👧‍👦 Families by Date</h2>
+        <div class="sub">Tap a date to see who responded. Tap a family to see food details, or use Edit/Delete to update the response.</div>
+        <div id="dateFamilyDetails"></div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
         <h2>📊 Date Preference</h2>
         <div class="sub">Current responses from attending/maybe families.</div>
         <div id="pollBars"></div>
       </div>
+
       <div class="card" style="margin-top:14px">
         <h2>Current RSVP Summary</h2>
         <div class="stats" id="publicStats"></div>
-      </div>
-
-      <div class="card" style="margin-top:14px">
-        <h2>👨‍👩‍👧‍👦 Families by Date</h2>
-        <div class="sub">Tap a date to see which families are available. Tap a family to see the food breakdown.</div>
-        <div id="dateFamilyDetails"></div>
       </div>
     </section>
 
@@ -1866,9 +1881,11 @@ saveRsvp.onclick=async()=>{
   try{
     const {error}=await sb.from("party_responses").upsert(uiResponseToDb(r), {onConflict:"id"});
     if(error) throw error;
+    const wasEditing=!!editingResponseId;
     await loadAll();
     resetForm();
-    toast("RSVP saved");
+    toast(wasEditing?"Family response updated":"RSVP saved");
+    showPage("poll");
   }catch(e){
     console.error(e);
     toast("Save failed: "+(e.message||e));
@@ -1928,6 +1945,7 @@ function renderDateFamilyDetails(){
                     <th>Under 3</th>
                     <th>Total</th>
                     <th>Food</th>
+                    <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1952,6 +1970,12 @@ function renderDateFamilyDetails(){
                         <td>${r.kidsUnder3||0}</td>
                         <td><b>${total}</b></td>
                         <td>V ${r.food?.vegetarian||0} • NV ${r.food?.nonVegetarian||0} • Vegan ${r.food?.vegan||0} • Jain ${r.food?.jain||0}</td>
+                        <td>
+                          <div class="actions family-actions">
+                            <button class="btn sm ghost" onclick="editResponse('${r.id}')">Edit</button>
+                            <button class="btn sm ghost family-delete" onclick="deleteResponse('${r.id}')">Delete</button>
+                          </div>
+                        </td>
                       </tr>`;
                   }).join("")}
                 </tbody>
@@ -2049,7 +2073,7 @@ window.editResponse=id=>{
   partyFields.forEach(([k])=>document.getElementById("p_"+k).value=r[k]||0);
   foodFields.forEach(([k])=>document.getElementById("f_"+k).value=r.food?.[k]||0);
   document.querySelectorAll(".rsvpDate").forEach(x=>x.checked=r.dates.includes(x.value));
-  editHint.textContent=`Editing ${r.name}`;
+  editHint.textContent=`Editing ${r.name} — update counts, food choices, dates, or notes and tap Save RSVP`;
   showPage("rsvp"); window.scrollTo({top:0,behavior:"smooth"});
 };
 window.deleteResponse=async id=>{
@@ -2058,7 +2082,8 @@ window.deleteResponse=async id=>{
     const {error}=await sb.from("party_responses").delete().eq("id",id);
     if(error) throw error;
     await loadAll();
-    toast("RSVP deleted");
+    showPage("poll");
+    toast("Family response deleted");
   }catch(e){toast("Delete failed: "+(e.message||e))}
 };
 adminAdd.onclick=()=>{resetForm();showPage("rsvp");memberName.focus()};
@@ -2372,6 +2397,7 @@ if(sb){
 }else{
   setStatus("Library error",false);
 }
+showPage("poll");
 
 try {
   ensureRsvpCounters();
