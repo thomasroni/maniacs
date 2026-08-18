@@ -2257,6 +2257,392 @@ footer{
   }
 }
 
+
+/* =========================================================
+   HIGHER-CONTRAST FESTIVE LIGHT THEME
+   Bright overall, stronger hierarchy and section separation.
+   ========================================================= */
+body{
+  background:
+    radial-gradient(circle at 3% 5%,rgba(208,25,32,.14) 0 85px,transparent 86px),
+    radial-gradient(circle at 97% 12%,rgba(201,145,22,.18) 0 110px,transparent 111px),
+    linear-gradient(180deg,#f4f1eb 0%,#faf8f4 34%,#eef1f5 100%)!important;
+}
+
+header{
+  background:#ffffff!important;
+  border:1px solid #d8dbe0!important;
+  border-top:6px solid #d71920!important;
+  box-shadow:0 18px 42px rgba(30,34,40,.17)!important;
+}
+
+.card{
+  background:#ffffff!important;
+  border:1px solid #d7dbe0!important;
+  box-shadow:0 14px 34px rgba(35,39,45,.13)!important;
+}
+
+.card h2{
+  color:#171b20!important;
+  font-weight:900!important;
+}
+.card .sub{
+  color:#59626d!important;
+}
+
+#page-poll>.card:nth-of-type(1){
+  border-left:6px solid #d71920!important;
+}
+#page-poll>.card:nth-of-type(2){
+  border-left:6px solid #c6941f!important;
+}
+#page-poll>.card:nth-of-type(3){
+  border-left:6px solid #1d7d4b!important;
+}
+
+.best-date-summary-card{
+  background:linear-gradient(135deg,#fff1f1,#fff8ec)!important;
+  border:2px solid #d71920!important;
+  box-shadow:0 12px 28px rgba(215,25,32,.14)!important;
+}
+
+.best-date-kicker{
+  color:#b20f16!important;
+}
+.best-date-main strong{
+  color:#111820!important;
+}
+
+.best-date-grid>div{
+  background:#fff!important;
+  border:1px solid #d9dce1!important;
+}
+.best-date-grid b{
+  color:#d71920!important;
+}
+
+.selection-impact{
+  gap:10px!important;
+}
+.impact-included{
+  background:#eaf8ef!important;
+  border:1px solid #a9d5b9!important;
+  color:#1f6b3d!important;
+}
+.impact-excluded{
+  background:#fff0e8!important;
+  border:1px solid #e7b48c!important;
+  color:#8c4511!important;
+}
+
+.stat{
+  background:#f8f9fb!important;
+  border:1px solid #cfd4da!important;
+  box-shadow:none!important;
+}
+.stat:nth-child(1){
+  background:#fff4f4!important;
+  border-color:#efc1c4!important;
+}
+.stat:nth-child(2){
+  background:#eef9f2!important;
+  border-color:#bcdcc7!important;
+}
+.stat:nth-child(3){
+  background:#fff8e8!important;
+  border-color:#e6cf93!important;
+}
+.stat b{
+  color:#cf161e!important;
+  font-weight:900!important;
+}
+.stat:nth-child(2) b{
+  color:#1d7d4b!important;
+}
+.stat:nth-child(3) b{
+  color:#9a6b00!important;
+}
+
+.date-family-block{
+  background:#fff!important;
+  border:1px solid #cfd4da!important;
+  box-shadow:0 6px 16px rgba(34,39,45,.07)!important;
+}
+.date-family-block:first-child{
+  border:2px solid #c6941f!important;
+  background:#fff9eb!important;
+}
+.date-family-block>summary strong{
+  color:#171b20!important;
+}
+
+.pricing-banner span{
+  background:#fff3d9!important;
+  border:1px solid #d9b75c!important;
+  color:#6c4c00!important;
+}
+
+.event-selector{
+  background:#f9fafb!important;
+  border:1px solid #c8cdd3!important;
+  color:#20252b!important;
+}
+
+.status{
+  background:#0f5132!important;
+  color:#8ff0b4!important;
+  border:1px solid #1ca766!important;
+  box-shadow:0 5px 14px rgba(15,81,50,.15)!important;
+}
+.status.bad{
+  background:#6b171b!important;
+  color:#ffd0d0!important;
+  border-color:#d14b52!important;
+}
+
+#adminBtn{
+  background:#fff8e9!important;
+  color:#845900!important;
+  border:1px solid #c99b2b!important;
+  font-weight:900!important;
+}
+
+.tabs{
+  border-top:1px solid #e2e5e9!important;
+}
+.tab{
+  color:#535c66!important;
+  font-weight:850!important;
+}
+.tab.active{
+  color:#d71920!important;
+}
+.tab.active::after{
+  background:#d71920!important;
+}
+
+.btn.primary,.card .btn.primary{
+  background:#d71920!important;
+  color:#fff!important;
+  box-shadow:0 7px 18px rgba(215,25,32,.22)!important;
+}
+.btn.dark,.card .btn.dark{
+  background:#b78113!important;
+  color:#fff!important;
+}
+
+footer{
+  background:#ffffff!important;
+  border:1px solid #d9dde2!important;
+  color:#525b65!important;
+  box-shadow:0 10px 24px rgba(30,34,40,.09)!important;
+}
+
+@media(max-width:720px){
+  body{
+    background:
+      radial-gradient(circle at 0% 7%,rgba(208,25,32,.12) 0 65px,transparent 66px),
+      radial-gradient(circle at 100% 18%,rgba(201,145,22,.16) 0 82px,transparent 83px),
+      linear-gradient(180deg,#f3f0ea 0%,#faf8f5 36%,#edf0f4 100%)!important;
+  }
+}
+
+
+/* =========================================================
+   CELEBRATION ENERGY — tasteful motion + festive accents
+   ========================================================= */
+
+/* subtle animated glow behind the page */
+body::before{
+  animation:partyGlow 10s ease-in-out infinite alternate!important;
+}
+@keyframes partyGlow{
+  0%{opacity:.52;transform:translateY(0)}
+  100%{opacity:.82;transform:translateY(6px)}
+}
+
+/* festive accent line in the header */
+header{
+  overflow:hidden!important;
+}
+header::before{
+  content:""!important;
+  position:absolute!important;
+  left:0!important;
+  right:0!important;
+  top:0!important;
+  height:6px!important;
+  background:linear-gradient(90deg,#d71920 0 28%,#d5aa49 28% 52%,#1d7d4b 52% 72%,#d71920 72% 100%)!important;
+}
+
+/* celebration badge under title */
+.brand .holidayTag{
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:6px!important;
+  margin-top:5px!important;
+  padding:5px 10px!important;
+  border-radius:999px!important;
+  background:linear-gradient(135deg,#fff1d9,#fff8ed)!important;
+  border:1px solid #e1c070!important;
+  color:#8b6100!important;
+  font-weight:900!important;
+  box-shadow:0 4px 12px rgba(173,126,20,.08)!important;
+}
+.brand .holidayTag::before{content:"✨"}
+.brand .holidayTag::after{content:"🎉"}
+
+/* top pick gets a celebratory shimmer */
+.best-date-summary-card{
+  position:relative!important;
+  overflow:hidden!important;
+}
+.best-date-summary-card::after{
+  content:""!important;
+  position:absolute!important;
+  top:-45%!important;
+  left:-35%!important;
+  width:35%!important;
+  height:190%!important;
+  transform:rotate(18deg)!important;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.68),transparent)!important;
+  animation:topPickShine 5s ease-in-out infinite!important;
+  pointer-events:none!important;
+}
+@keyframes topPickShine{
+  0%,60%{left:-45%;opacity:0}
+  72%{opacity:.8}
+  100%{left:125%;opacity:0}
+}
+
+.best-date-kicker{
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:6px!important;
+  padding:5px 9px!important;
+  border-radius:999px!important;
+  background:#d71920!important;
+  color:#fff!important;
+  letter-spacing:.06em!important;
+}
+
+/* lively section titles */
+.card>h2{
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+}
+#page-poll>.card:nth-of-type(1)>h2::after{
+  content:"Most popular first"!important;
+  margin-left:auto!important;
+  font-size:10px!important;
+  font-weight:850!important;
+  color:#9a6b00!important;
+  background:#fff3cf!important;
+  border:1px solid #e2c873!important;
+  border-radius:999px!important;
+  padding:4px 8px!important;
+  text-transform:uppercase!important;
+  letter-spacing:.04em!important;
+}
+
+/* more premium, energetic buttons */
+.btn.primary,.card .btn.primary{
+  background:linear-gradient(135deg,#ef232b,#c90d15)!important;
+  box-shadow:0 8px 20px rgba(215,25,32,.24)!important;
+  transform:translateZ(0)!important;
+  transition:transform .18s ease,box-shadow .18s ease!important;
+}
+.btn.primary:active,.card .btn.primary:active{
+  transform:scale(.97)!important;
+}
+#adminBtn{
+  background:linear-gradient(135deg,#fff7df,#fffdf7)!important;
+  box-shadow:0 7px 18px rgba(176,124,0,.12)!important;
+}
+
+/* leading date gets more visual reward */
+.date-family-block:first-child{
+  position:relative!important;
+  border:2px solid #d0a331!important;
+  background:linear-gradient(135deg,#fff6dc,#fffdf7)!important;
+  box-shadow:0 10px 22px rgba(181,133,24,.12)!important;
+}
+.date-family-block:first-child::before{
+  content:"TOP PICK"!important;
+  position:absolute!important;
+  top:-9px!important;
+  right:16px!important;
+  z-index:3!important;
+  background:linear-gradient(135deg,#d8a72d,#b67f0e)!important;
+  color:#fff!important;
+  font-size:9px!important;
+  font-weight:950!important;
+  letter-spacing:.08em!important;
+  padding:4px 8px!important;
+  border-radius:999px!important;
+  box-shadow:0 4px 10px rgba(128,87,0,.18)!important;
+}
+
+/* price chips feel more festive */
+.pricing-banner span{
+  position:relative!important;
+  overflow:hidden!important;
+}
+.pricing-banner span::after{
+  content:""!important;
+  position:absolute!important;
+  inset:auto -12px -18px auto!important;
+  width:38px!important;
+  height:38px!important;
+  border-radius:50%!important;
+  background:rgba(215,25,32,.06)!important;
+}
+
+/* subtle floating festive dots, only a few */
+.wrap::before,
+.wrap::after{
+  content:""!important;
+  position:fixed!important;
+  width:8px!important;
+  height:8px!important;
+  border-radius:50%!important;
+  pointer-events:none!important;
+  z-index:-1!important;
+  box-shadow:
+    20vw 6vh 0 #d71920,
+    68vw 11vh 0 #d5aa49,
+    86vw 34vh 0 #1d7d4b,
+    12vw 58vh 0 #d5aa49,
+    73vw 76vh 0 #d71920!important;
+  opacity:.18!important;
+  animation:floatDots 8s ease-in-out infinite alternate!important;
+}
+.wrap::after{
+  width:5px!important;
+  height:5px!important;
+  box-shadow:
+    34vw 18vh 0 #d5aa49,
+    91vw 48vh 0 #d71920,
+    23vw 81vh 0 #1d7d4b!important;
+  animation-delay:1.4s!important;
+}
+@keyframes floatDots{
+  from{transform:translateY(0)}
+  to{transform:translateY(-10px)}
+}
+
+/* mobile: keep excitement subtle */
+@media(max-width:720px){
+  #page-poll>.card:nth-of-type(1)>h2::after{
+    font-size:8px!important;
+    padding:3px 6px!important;
+  }
+  .wrap::before,.wrap::after{
+    opacity:.12!important;
+  }
+}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
