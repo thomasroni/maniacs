@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="Advanced rehabilitation, wellness and aesthetic technology distribution backed by 25 years of industry experience." />
+<title>NovaMed Technologies | Advanced Therapy & Aesthetic Equipment</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+
+  :root{
+    --ink:#0b1d2a;
+    --muted:#667782;
+    --line:#dbe7e7;
+    --soft:#f5fbfa;
+    --white:#ffffff;
+    --teal:#13a89e;
+    --teal2:#72d7ca;
+    --navy:#102c3b;
+    --navy2:#163e4d;
+    --accent:#dff8f3;
+    --shadow:0 20px 60px rgba(15,55,67,.10);
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    color:var(--ink);
+    background:var(--white);
+    font-family:"DM Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+    line-height:1.55;
+  }
+  a{text-decoration:none;color:inherit}
+  button,input,textarea,select{font:inherit}
+
+  .page{
+    overflow:hidden;
+    position:relative;
+  }
+
+  .nav-wrap{
+    position:fixed;
+    z-index:100;
+    top:16px;
+    left:0;right:0;
+    padding:0 22px;
+    pointer-events:none;
+  }
+  nav{
+    max-width:1180px;
+    margin:auto;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:22px;
+    padding:12px 14px 12px 18px;
+    background:rgba(255,255,255,.88);
+    border:1px solid rgba(205,225,225,.9);
+    box-shadow:0 12px 40px rgba(21,66,77,.10);
+    border-radius:18px;
+    backdrop-filter:blur(14px);
+    pointer-events:auto;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-family:"Manrope",sans-serif;
+    font-weight:800;
+    letter-spacing:-.5px;
+  }
+  .brand-mark{
+    width:34px;height:34px;
+    border-radius:11px;
+    display:grid;place-items:center;
+    background:linear-gradient(135deg,var(--navy),var(--teal));
+    color:white;
+    box-shadow:0 8px 18px rgba(19,168,158,.22);
+  }
+  .brand-mark svg{width:19px;height:19px}
+  .brand span small{
+    display:block;
+    font:600 9px/1.1 "DM Sans",sans-serif;
+    letter-spacing:1.7px;
+    color:#6a8089;
+    margin-top:2px;
+  }
+  .navlinks{display:flex;gap:26px;font-size:14px;font-weight:600;color:#435760}
+  .navlinks a{transition:.2s}
+  .navlinks a:hover{color:var(--teal)}
+  .nav-cta{
+    padding:10px 16px;
+    border-radius:12px;
+    background:var(--navy);
+    color:white;
+    font-size:13px;
+    font-weight:700;
+  }
+
+  .hero{
+    min-height:760px;
+    display:flex;
+    align-items:center;
+    padding:140px 24px 90px;
+    position:relative;
+    background:
+      radial-gradient(circle at 90% 20%, rgba(114,215,202,.24), transparent 30%),
+      radial-gradient(circle at 8% 40%, rgba(19,168,158,.10), transparent 27%),
+      linear-gradient(180deg,#fbfefd 0%,#f6fbfa 100%);
+  }
+  .hero:before{
+    content:"";
+    position:absolute;
+    width:640px;height:640px;
+    border:1px solid rgba(19,168,158,.10);
+    border-radius:50%;
+    right:-220px;top:55px;
+    box-shadow:
+      0 0 0 70px rgba(19,168,158,.035),
+      0 0 0 140px rgba(19,168,158,.025);
+  }
+  .hero-inner{
+    max-width:1180px;
+    width:100%;
+    margin:auto;
+    display:grid;
+    grid-template-columns:1.05fr .95fr;
+    align-items:center;
+    gap:72px;
+    position:relative;
+    z-index:2;
+  }
+  .eyebrow{
+    display:inline-flex;
+    align-items:center;
+    gap:9px;
+    padding:8px 11px;
+    border:1px solid #cfe8e5;
+    border-radius:999px;
+    background:rgba(255,255,255,.72);
+    font-size:12px;
+    font-weight:700;
+    color:#267a75;
+    letter-spacing:.7px;
+    text-transform:uppercase;
+  }
+  .eyebrow i{
+    width:7px;height:7px;
+    background:var(--teal);
+    border-radius:50%;
+    box-shadow:0 0 0 5px rgba(19,168,158,.10);
+  }
+  h1,h2,h3{font-family:"Manrope",sans-serif}
+  h1{
+    font-size:clamp(44px,5.6vw,76px);
+    line-height:1.02;
+    letter-spacing:-3.4px;
+    margin:22px 0 22px;
+    max-width:720px;
+  }
+  h1 em{
+    font-style:normal;
+    background:linear-gradient(105deg,var(--teal),#178b9c);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .hero-copy p{
+    max-width:620px;
+    margin:0;
+    color:var(--muted);
+    font-size:18px;
+  }
+  .hero-actions{display:flex;gap:12px;margin-top:34px;flex-wrap:wrap}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:9px;
+    padding:14px 19px;
+    border-radius:13px;
+    font-size:14px;
+    font-weight:700;
+    transition:.22s;
+    border:1px solid transparent;
+    cursor:pointer;
+  }
+  .btn-primary{
+    background:var(--navy);color:white;
+    box-shadow:0 10px 25px rgba(16,44,59,.18);
+  }
+  .btn-primary:hover{transform:translateY(-2px);background:#173e4f}
+  .btn-secondary{background:white;border-color:#d8e6e6;color:#27404a}
+  .btn-secondary:hover{border-color:#a9cfcb;transform:translateY(-2px)}
+  .micro-trust{
+    margin-top:30px;
+    display:flex;align-items:center;gap:22px;flex-wrap:wrap;
+    color:#536872;font-size:13px;font-weight:600;
+  }
+  .micro-trust span{display:flex;align-items:center;gap:7px}
+  .check{
+    width:19px;height:19px;border-radius:50%;
+    background:#e6f8f4;color:#138d84;
+    display:grid;place-items:center;font-size:11px;font-weight:900;
+  }
+
+  .hero-visual{
+    position:relative;
+    min-height:500px;
+    display:grid;place-items:center;
+  }
+  .device-scene{
+    width:min(100%,520px);
+    aspect-ratio:1/1;
+    position:relative;
+  }
+  .halo{
+    position:absolute;inset:9% 6% 8% 8%;
+    border-radius:50%;
+    background:linear-gradient(145deg,#d8f6f0,#effafa);
+    box-shadow:inset 0 0 0 1px #d3ece9;
+  }
+  .console{
+    position:absolute;
+    width:66%;height:49%;
+    left:18%;top:23%;
+    border-radius:28px 28px 34px 34px;
+    background:linear-gradient(150deg,#ffffff,#e7efef);
+    box-shadow:0 35px 65px rgba(15,59,71,.20), inset 0 0 0 1px rgba(16,44,59,.07);
+    transform:rotate(-2deg);
+  }
+  .screen{
+    position:absolute;
+    left:9%;right:9%;top:9%;height:54%;
+    border-radius:18px;
+    background:
+      radial-gradient(circle at 72% 36%, rgba(76,218,205,.55), transparent 16%),
+      linear-gradient(140deg,#102d3a,#173f50);
+    overflow:hidden;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.09);
+  }
+  .screen:after{
+    content:"THERAPY SYSTEM";
+    position:absolute;left:18px;top:16px;color:#a9d9d5;
+    font:700 8px/1 "DM Sans";letter-spacing:1.7px;
+  }
+  .screen-grid{
+    position:absolute;left:18px;right:18px;bottom:18px;top:40px;
+    display:grid;grid-template-columns:1.1fr .9fr;gap:10px;
+  }
+  .wave{
+    border-radius:10px;background:rgba(255,255,255,.05);
+    position:relative;overflow:hidden;
+  }
+  .wave svg{width:100%;height:100%}
+  .stats{display:grid;gap:8px}
+  .stats div{border-radius:9px;background:rgba(255,255,255,.07);padding:9px}
+  .stats b{display:block;color:#fff;font-size:14px;line-height:1}
+  .stats small{font-size:7px;color:#87aaa9;letter-spacing:1px}
+  .controls{
+    position:absolute;left:11%;right:11%;bottom:8%;
+    display:flex;align-items:center;gap:12px;
+  }
+  .dial{
+    width:35px;height:35px;border-radius:50%;
+    background:linear-gradient(#fff,#cad6d7);
+    box-shadow:inset 0 0 0 1px #bfcccc,0 4px 8px rgba(0,0,0,.08);
+  }
+  .light{
+    width:10px;height:10px;border-radius:50%;background:#42d9c8;
+    box-shadow:0 0 14px #42d9c8;
+  }
+  .slots{display:flex;gap:7px;margin-left:auto}
+  .slots i{width:26px;height:8px;border-radius:10px;background:#c6d4d5}
+  .wand{
+    position:absolute;
+    width:28%;height:11%;
+    right:3%;top:28%;
+    border-radius:999px;
+    background:linear-gradient(180deg,#284b59,#17313c);
+    transform:rotate(-26deg);
+    box-shadow:0 15px 30px rgba(16,44,59,.2);
+  }
+  .wand:before{
+    content:"";
+    position:absolute;width:30%;height:122%;left:-8%;top:-11%;
+    border-radius:22px;background:linear-gradient(#d9e7e7,#a9bbbb);
+  }
+  .wand:after{
+    content:"";
+    position:absolute;width:9%;height:94%;right:-1%;top:3%;
+    border-radius:10px;background:#77ddd1;
+  }
+  .cable{
+    position:absolute;
+    width:38%;height:35%;
+    right:-1%;top:42%;
+    border:4px solid #244452;
+    border-left-color:transparent;border-bottom-color:transparent;
+    border-radius:50%;
+    transform:rotate(30deg);
+  }
+  .floating-card{
+    position:absolute;
+    background:rgba(255,255,255,.92);
+    border:1px solid #dbe9e8;
+    box-shadow:var(--shadow);
+    backdrop-filter:blur(10px);
+    border-radius:16px;
+    padding:12px 14px;
+    font-size:11px;color:#5b6c73;
+  }
+  .floating-card strong{display:block;color:var(--ink);font-size:13px;margin-bottom:2px}
+  .fc1{left:-3%;top:14%}
+  .fc2{right:-5%;bottom:11%}
+  .pulse-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--teal);margin-right:5px}
+
+  section{padding:96px 24px}
+  .container{max-width:1180px;margin:auto}
+  .section-head{
+    display:flex;align-items:end;justify-content:space-between;
+    gap:30px;margin-bottom:40px;
+  }
+  .section-kicker{
+    color:var(--teal);font-size:12px;font-weight:800;
+    letter-spacing:1.5px;text-transform:uppercase;
+    margin-bottom:8px;
+  }
+  h2{
+    font-size:clamp(34px,4vw,50px);
+    line-height:1.05;
+    letter-spacing:-2.1px;
+    margin:0;
+    max-width:720px;
+  }
+  .section-head p{max-width:480px;color:var(--muted);margin:0;font-size:15px}
+
+  .products{background:white}
+  .product-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:16px;
+  }
+  .product-card{
+    position:relative;
+    min-height:320px;
+    border-radius:22px;
+    padding:24px;
+    border:1px solid #e0ebea;
+    background:linear-gradient(155deg,#ffffff,#f7fbfb);
+    overflow:hidden;
+    transition:.25s;
+  }
+  .product-card:hover{
+    transform:translateY(-5px);
+    box-shadow:0 25px 60px rgba(16,44,59,.09);
+    border-color:#c9e0de;
+  }
+  .iconbox{
+    width:52px;height:52px;border-radius:16px;
+    display:grid;place-items:center;
+    background:#e9f8f5;color:#158d86;
+    margin-bottom:26px;
+  }
+  .iconbox svg{width:27px;height:27px}
+  .product-card h3{font-size:20px;margin:0 0 8px;letter-spacing:-.5px}
+  .product-card p{margin:0;color:var(--muted);font-size:14px;max-width:310px}
+  .tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:20px}
+  .tag{
+    padding:5px 8px;border-radius:7px;
+    background:white;border:1px solid #dde9e8;
+    color:#557077;font-size:10px;font-weight:700;
+  }
+  .arrow{
+    position:absolute;right:20px;bottom:18px;
+    width:34px;height:34px;border-radius:50%;
+    border:1px solid #d7e7e5;display:grid;place-items:center;
+    color:#2a7974;transition:.2s;
+  }
+  .product-card:hover .arrow{background:var(--navy);color:white;border-color:var(--navy)}
+
+  .experience{
+    background:var(--navy);
+    color:white;
+    position:relative;
+  }
+  .experience:before{
+    content:"";position:absolute;inset:0;
+    background:
+      radial-gradient(circle at 80% 30%,rgba(61,209,194,.12),transparent 28%),
+      linear-gradient(120deg,transparent 45%,rgba(255,255,255,.025) 45%);
+  }
+  .experience .container{position:relative;z-index:2}
+  .exp-grid{display:grid;grid-template-columns:.85fr 1.15fr;gap:80px;align-items:center}
+  .big-number{
+    font:800 clamp(110px,16vw,220px)/.78 "Manrope";
+    letter-spacing:-12px;
+    color:#fff;
+  }
+  .big-number span{color:var(--teal2)}
+  .years-label{
+    color:#9fb5bd;font-size:13px;text-transform:uppercase;letter-spacing:2px;
+    font-weight:700;margin-top:28px;
+  }
+  .exp-copy h2{color:white}
+  .exp-copy p{color:#b9c9cf;font-size:17px;max-width:630px}
+  .exp-points{
+    display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:30px;
+  }
+  .exp-point{
+    padding:17px 16px;border:1px solid rgba(255,255,255,.11);
+    background:rgba(255,255,255,.035);border-radius:14px;
+    font-size:13px;color:#d9e4e7;
+  }
+  .exp-point b{display:block;color:white;margin-bottom:3px}
+
+  .solutions{background:#f6fbfa}
+  .solution-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .solution{
+    background:white;border:1px solid #deebea;border-radius:18px;padding:22px;
+  }
+  .solution .num{
+    font:700 11px/1 "Manrope";
+    color:var(--teal);letter-spacing:1px;margin-bottom:28px;
+  }
+  .solution h3{font-size:17px;margin:0 0 7px}
+  .solution p{font-size:13px;color:var(--muted);margin:0}
+
+  .why{background:white}
+  .why-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center}
+  .why-panel{
+    border-radius:28px;
+    min-height:500px;
+    background:
+      radial-gradient(circle at 78% 18%,rgba(80,217,204,.22),transparent 20%),
+      linear-gradient(145deg,#0f2a38,#174657);
+    position:relative;overflow:hidden;padding:34px;
+  }
+  .why-panel:before{
+    content:"";position:absolute;width:370px;height:370px;border-radius:50%;
+    border:1px solid rgba(255,255,255,.11);right:-90px;bottom:-90px;
+    box-shadow:0 0 0 60px rgba(255,255,255,.025),0 0 0 120px rgba(255,255,255,.015);
+  }
+  .why-badge{
+    display:inline-block;padding:8px 10px;border-radius:10px;
+    background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.12);
+    color:#cce4e5;font-size:11px;font-weight:700;letter-spacing:.7px;
+  }
+  .quote{
+    position:absolute;left:34px;right:34px;bottom:34px;
+    color:white;font:600 28px/1.22 "Manrope";letter-spacing:-1px;
+    max-width:470px;
+  }
+  .why-copy h2{margin-bottom:28px}
+  .why-list{display:grid;gap:11px}
+  .why-item{
+    display:grid;grid-template-columns:42px 1fr;gap:13px;
+    padding:16px;border:1px solid #e1ebea;border-radius:15px;
+  }
+  .why-item .mini{
+    width:42px;height:42px;border-radius:12px;
+    background:#edf8f6;display:grid;place-items:center;color:#118f86;font-weight:800;
+  }
+  .why-item b{display:block;font:700 14px "Manrope";margin-bottom:3px}
+  .why-item span{font-size:12px;color:var(--muted)}
+
+  .contact{background:#f6fbfa;padding-top:80px;padding-bottom:80px}
+  .contact-card{
+    background:white;border:1px solid #dce9e8;border-radius:28px;
+    display:grid;grid-template-columns:.9fr 1.1fr;overflow:hidden;
+    box-shadow:0 24px 70px rgba(16,44,59,.07);
+  }
+  .contact-info{
+    padding:44px;
+    background:linear-gradient(145deg,#102c3b,#174555);
+    color:white;
+    position:relative;
+  }
+  .contact-info:after{
+    content:"";position:absolute;width:260px;height:260px;border-radius:50%;
+    background:rgba(83,222,207,.08);right:-110px;bottom:-110px;
+  }
+  .contact-info h2{font-size:38px;letter-spacing:-1.5px;color:white}
+  .contact-info p{color:#b9c9cf;font-size:14px}
+  .contact-details{display:grid;gap:14px;margin-top:34px;position:relative;z-index:2}
+  .detail{
+    padding:13px 0;border-top:1px solid rgba(255,255,255,.1);
+    display:flex;gap:12px;align-items:center;font-size:13px;color:#d8e4e7;
+  }
+  .detail strong{color:white}
+  .contact-form{padding:42px}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+  .field{display:grid;gap:6px}
+  .field.full{grid-column:1/-1}
+  label{font-size:11px;font-weight:700;color:#4c626b}
+  input,select,textarea{
+    width:100%;border:1px solid #dbe8e7;border-radius:11px;
+    background:#fbfdfd;padding:12px 13px;outline:none;color:#233941;
+    transition:.2s;
+  }
+  input:focus,select:focus,textarea:focus{border-color:#74cfc6;box-shadow:0 0 0 3px rgba(19,168,158,.08)}
+  textarea{min-height:108px;resize:vertical}
+  .submit{
+    margin-top:14px;width:100%;border:0;border-radius:12px;
+    padding:13px;background:var(--teal);color:white;font-weight:800;cursor:pointer;
+  }
+  .submit:hover{background:#108f87}
+  .form-note{font-size:10px;color:#87979e;margin:9px 0 0}
+
+  footer{
+    padding:28px 24px 36px;background:white;
+  }
+  .footer-inner{
+    max-width:1180px;margin:auto;
+    display:flex;justify-content:space-between;align-items:center;gap:20px;
+    color:#75868d;font-size:11px;
+  }
+  .footer-inner strong{color:var(--navy)}
+  .disclaimer{
+    max-width:780px;color:#8a999f;font-size:10px;line-height:1.5;
+  }
+
+  @media (max-width: 900px){
+    .navlinks{display:none}
+    .hero{padding-top:120px}
+    .hero-inner,.exp-grid,.why-grid,.contact-card{grid-template-columns:1fr}
+    .hero-inner{gap:35px}
+    .hero-visual{min-height:430px}
+    .product-grid{grid-template-columns:1fr 1fr}
+    .solution-grid{grid-template-columns:1fr 1fr}
+    .exp-grid{gap:36px}
+    .big-number{font-size:150px}
+    .contact-info{padding:34px}
+    .contact-form{padding:34px}
+  }
+
+  @media (max-width: 620px){
+    .nav-wrap{top:9px;padding:0 10px}
+    nav{border-radius:14px;padding:10px 10px 10px 13px}
+    .nav-cta{padding:9px 11px;font-size:11px}
+    .brand{font-size:13px}
+    .brand-mark{width:30px;height:30px}
+    .hero{min-height:auto;padding:112px 18px 58px}
+    h1{font-size:47px;letter-spacing:-2.4px}
+    .hero-copy p{font-size:16px}
+    .hero-visual{min-height:350px}
+    .device-scene{width:360px;max-width:100%}
+    .floating-card{display:none}
+    section{padding:68px 18px}
+    .section-head{display:block}
+    .section-head p{margin-top:16px}
+    .product-grid,.solution-grid,.exp-points{grid-template-columns:1fr}
+    .product-card{min-height:280px}
+    .why-panel{min-height:390px;padding:24px}
+    .quote{font-size:23px;left:24px;right:24px;bottom:24px}
+    .contact{padding:54px 12px}
+    .contact-info,.contact-form{padding:28px 22px}
+    .form-grid{grid-template-columns:1fr}
+    .field.full{grid-column:auto}
+    .footer-inner{display:block}
+    .disclaimer{margin-top:12px}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="nav-wrap">
+    <nav>
+      <a class="brand" href="#top" aria-label="NovaMed home">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 12h4l2-5 4 10 2-5h4"/><circle cx="12" cy="12" r="9"/>
+          </svg>
+        </div>
+        <span>NOVAMED<small>TECHNOLOGIES</small></span>
+      </a>
+      <div class="navlinks">
+        <a href="#technologies">Technologies</a>
+        <a href="#experience">Experience</a>
+        <a href="#solutions">Solutions</a>
+        <a href="#why-us">Why Us</a>
+      </div>
+      <a class="nav-cta" href="#contact">Request a Consultation</a>
+    </nav>
+  </div>
+
+  <header class="hero" id="top">
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <div class="eyebrow"><i></i> Advanced clinical technology</div>
+        <h1>Technology that helps practices <em>move forward.</em></h1>
+        <p>
+          Rehabilitation, wellness and aesthetic equipment selected with real-world industry knowledge —
+          from shockwave and EMTT to TECAR, therapeutic laser, spinal decompression and body-contouring technologies.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#technologies">
+            Explore Technologies
+            <span>→</span>
+          </a>
+          <a class="btn btn-secondary" href="#contact">Talk to a Specialist</a>
+        </div>
+        <div class="micro-trust">
+          <span><b class="check">✓</b> 25 years industry experience</span>
+          <span><b class="check">✓</b> Practice-focused guidance</span>
+          <span><b class="check">✓</b> Training & support</span>
+        </div>
+      </div>
+
+      <div class="hero-visual" aria-hidden="true">
+        <div class="device-scene">
+          <div class="halo"></div>
+          <div class="console">
+            <div class="screen">
+              <div class="screen-grid">
+                <div class="wave">
+                  <svg viewBox="0 0 160 75" preserveAspectRatio="none">
+                    <polyline points="0,48 16,45 27,50 39,30 49,53 63,22 76,49 90,34 105,45 118,26 132,46 160,37"
+                      fill="none" stroke="#6be4d8" stroke-width="2"/>
+                    <polyline points="0,57 22,53 37,57 50,44 67,56 82,40 101,54 121,47 142,50 160,44"
+                      fill="none" stroke="rgba(255,255,255,.24)" stroke-width="1.2"/>
+                  </svg>
+                </div>
+                <div class="stats">
+                  <div><small>ENERGY</small><b>12.8</b></div>
+                  <div><small>MODE</small><b>PRO</b></div>
+                </div>
+              </div>
+            </div>
+            <div class="controls">
+              <div class="dial"></div><div class="light"></div>
+              <div class="slots"><i></i><i></i><i></i></div>
+            </div>
+          </div>
+          <div class="wand"></div>
+          <div class="cable"></div>
+          <div class="floating-card fc1"><span class="pulse-dot"></span><strong>Clinical Technology</strong>Built for modern practices</div>
+          <div class="floating-card fc2"><strong>Expert Guidance</strong>From selection to implementation</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="products" id="technologies">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Technology portfolio</div>
+          <h2>Equipment for the next generation of care.</h2>
+        </div>
+        <p>
+          A curated portfolio for rehabilitation, sports medicine, chiropractic, wellness and aesthetic practices —
+          with product selection based on clinical workflow, business goals and long-term value.
+        </p>
+      </div>
+
+      <div class="product-grid">
+        <article class="product-card">
+          <div class="iconbox">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M3 12h3l2-6 4 12 3-9 2 6h4"/><path d="M5 20h14"/>
+            </svg>
+          </div>
+          <h3>Shockwave Therapy</h3>
+          <p>Radial and focused extracorporeal shockwave systems for rehabilitation, orthopedics, sports medicine and pain-focused practices.</p>
+          <div class="tags"><span class="tag">RADIAL</span><span class="tag">FOCUSED</span><span class="tag">ESWT</span></div>
+          <span class="arrow">↗</span>
+        </article>
+
+        <article class="product-card">
+          <div class="iconbox">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+            </svg>
+          </div>
+          <h3>EMTT / Magnetotransduction</h3>
+          <p>High-energy magnetotransduction technology designed for non-invasive integration into musculoskeletal and recovery workflows.</p>
+          <div class="tags"><span class="tag">NON-INVASIVE</span><span class="tag">MSK</span><span class="tag">RECOVERY</span></div>
+          <span class="arrow">↗</span>
+        </article>
+
+        <article class="product-card">
+          <div class="iconbox">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M7 17c2-7 3-10 5-10s3 3 5 10"/><path d="M5 17h14"/><path d="M12 3v3"/>
+            </svg>
+          </div>
+          <h3>TECAR Therapy</h3>
+          <p>Capacitive and resistive radiofrequency systems for physiotherapy, sports rehabilitation, recovery and wellness applications.</p>
+          <div class="tags"><span class="tag">CAPACITIVE</span><span class="tag">RESISTIVE</span><span class="tag">RF</span></div>
+          <span class="arrow">↗</span>
+        </article>
+
+        <article class="product-card">
+          <div class="iconbox">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M4 18L17 5"/><path d="M14 5h3v3"/><path d="M8 15l3 3"/><path d="M14 12l4 4"/><path d="M4 21h16"/>
+            </svg>
+          </div>
+          <h3>Therapeutic Laser</h3>
+          <p>Professional laser platforms for rehabilitation and wellness settings, available in configurations suited to different clinical workflows.</p>
+          <div class="tags"><span class="tag">HIGH POWER</span><span class="tag">LASER</span><span class="tag">THERAPY</span></div>
+          <span class="arrow">↗</span>
+        </article>
+
+        <article class="product-card">
+          <div class="iconbox">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M5 7h14M5 17h14"/><path d="M8 7v10M16 7v10"/><path d="M10 12h4"/>
+            </svg>
+          </div>
+          <h3>Spinal Decompression</h3>
+          <p>Computer-controlled traction and decompression platforms developed for chiropractic, rehabilitation and spine-focused practices.</p>
+          <div class="tags"><span class="tag">TRACTION</span><span class="tag">SPINE</span><span class="tag">ERGONOMIC</span></div>
+          <span class="arrow">↗</span>
+        </article>
+
+        <article class="product-card">
+          <div class="iconbox">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M12 3c2 3 5 4 7 5-1 7-3 10-7 13-4-3-6-6-7-13 2-1 5-2 7-5z"/>
+              <path d="M9 12c1.4-1.3 4.6-1.3 6 0M10 9h.01M14 9h.01"/>
+            </svg>
+          </div>
+          <h3>Aesthetic Technologies</h3>
+          <p>Professional platforms for skin rejuvenation, wrinkle-focused treatments, body contouring and non-invasive aesthetic services.</p>
+          <div class="tags"><span class="tag">BODY CONTOURING</span><span class="tag">SKIN</span><span class="tag">AESTHETICS</span></div>
+          <span class="arrow">↗</span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="experience" id="experience">
+    <div class="container">
+      <div class="exp-grid">
+        <div>
+          <div class="big-number">25<span>+</span></div>
+          <div class="years-label">Years in medical & therapy technology</div>
+        </div>
+        <div class="exp-copy">
+          <div class="section-kicker" style="color:#72d7ca">Experience that matters</div>
+          <h2>More than equipment. Practical industry knowledge.</h2>
+          <p>
+            After 25 years working in this field, our founder understands the questions that matter before a practice invests:
+            Does the technology fit the patient population? Is it intuitive for staff? How will it fit the workflow?
+            What training and support will be available after installation?
+          </p>
+          <div class="exp-points">
+            <div class="exp-point"><b>Product selection</b>Match technology to practice goals and use cases.</div>
+            <div class="exp-point"><b>Implementation</b>Plan installation, workflow and team onboarding.</div>
+            <div class="exp-point"><b>Training</b>Help teams become comfortable with new equipment.</div>
+            <div class="exp-point"><b>Long-term support</b>Build relationships beyond the initial sale.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="solutions" id="solutions">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Who we serve</div>
+          <h2>Built around your practice.</h2>
+        </div>
+        <p>Different practices need different technology strategies. We help identify the right fit rather than forcing a one-size-fits-all equipment package.</p>
+      </div>
+      <div class="solution-grid">
+        <div class="solution"><div class="num">01 /</div><h3>Physical Therapy</h3><p>Rehabilitation and recovery technology for modern PT clinics and performance centers.</p></div>
+        <div class="solution"><div class="num">02 /</div><h3>Chiropractic</h3><p>Spine, soft-tissue and adjunct technology for diversified chiropractic practices.</p></div>
+        <div class="solution"><div class="num">03 /</div><h3>Sports Medicine</h3><p>Performance-oriented systems for athlete care, recovery and musculoskeletal workflows.</p></div>
+        <div class="solution"><div class="num">04 /</div><h3>Aesthetic & Wellness</h3><p>Non-invasive technology for med-spas, wellness clinics and aesthetic practices.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="why" id="why-us">
+    <div class="container">
+      <div class="why-grid">
+        <div class="why-panel">
+          <div class="why-badge">DISTRIBUTION • CONSULTING • SUPPORT</div>
+          <div class="quote">“The right equipment should make both clinical and business sense.”</div>
+        </div>
+        <div class="why-copy">
+          <div class="section-kicker">Why NovaMed</div>
+          <h2>A better way to choose clinical technology.</h2>
+          <div class="why-list">
+            <div class="why-item"><div class="mini">01</div><div><b>Experience before the sale</b><span>Ask better questions, compare options and choose equipment that fits the practice.</span></div></div>
+            <div class="why-item"><div class="mini">02</div><div><b>Thoughtful product portfolio</b><span>Focus on technologies with clear use cases, professional build quality and practical workflows.</span></div></div>
+            <div class="why-item"><div class="mini">03</div><div><b>Hands-on implementation</b><span>Support for setup, staff orientation and integration into day-to-day operations.</span></div></div>
+            <div class="why-item"><div class="mini">04</div><div><b>Relationship-driven support</b><span>A distribution partner who remains accessible after the equipment arrives.</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="contact" id="contact">
+    <div class="container">
+      <div class="contact-card">
+        <div class="contact-info">
+          <div class="section-kicker" style="color:#72d7ca">Start a conversation</div>
+          <h2>Let’s find the right technology for your practice.</h2>
+          <p>Tell us what type of practice you operate and what you are looking to add. We’ll help you evaluate the options.</p>
+          <div class="contact-details">
+            <div class="detail"><span>✦</span><div><strong>Phone</strong><br>(000) 000-0000</div></div>
+            <div class="detail"><span>✦</span><div><strong>Email</strong><br>hello@novamedtech.com</div></div>
+            <div class="detail"><span>✦</span><div><strong>Service Area</strong><br>United States</div></div>
+          </div>
+        </div>
+
+        <form class="contact-form" onsubmit="sendInquiry(event)">
+          <div class="form-grid">
+            <div class="field">
+              <label for="name">NAME</label>
+              <input id="name" name="name" required placeholder="Your name" />
+            </div>
+            <div class="field">
+              <label for="practice">PRACTICE / COMPANY</label>
+              <input id="practice" name="practice" placeholder="Practice name" />
+            </div>
+            <div class="field">
+              <label for="email">EMAIL</label>
+              <input id="email" type="email" name="email" required placeholder="you@practice.com" />
+            </div>
+            <div class="field">
+              <label for="interest">INTERESTED IN</label>
+              <select id="interest" name="interest">
+                <option>Shockwave Therapy</option>
+                <option>EMTT</option>
+                <option>TECAR Therapy</option>
+                <option>Therapeutic Laser</option>
+                <option>Spinal Decompression</option>
+                <option>Aesthetic Technology</option>
+                <option>Multiple Technologies</option>
+              </select>
+            </div>
+            <div class="field full">
+              <label for="message">HOW CAN WE HELP?</label>
+              <textarea id="message" name="message" placeholder="Tell us what you're looking for..."></textarea>
+            </div>
+          </div>
+          <button class="submit" type="submit">Request a Consultation →</button>
+          <p class="form-note">Demo form: update the destination email in the HTML before publishing.</p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-inner">
+      <div><strong>NovaMed Technologies</strong><br>Advanced rehabilitation, wellness & aesthetic technology.</div>
+      <div class="disclaimer">
+        Product availability, indications and regulatory clearance vary by manufacturer, model and jurisdiction.
+        Information on this website is for general business and product-discovery purposes and is not medical advice.
+      </div>
+      <div>© <span id="year"></span> NovaMed</div>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+  document.getElementById("year").textContent = new Date().getFullYear();
+
+  function sendInquiry(e){
+    e.preventDefault();
+    const f = new FormData(e.target);
+    const subject = encodeURIComponent("Website inquiry — " + f.get("interest"));
+    const body = encodeURIComponent(
+      "Name: " + f.get("name") + "\n" +
+      "Practice/Company: " + f.get("practice") + "\n" +
+      "Email: " + f.get("email") + "\n" +
+      "Interested in: " + f.get("interest") + "\n\n" +
+      "Message:\n" + f.get("message")
+    );
+    window.location.href = "mailto:hello@novamedtech.com?subject=" + subject + "&body=" + body;
+  }
+</script>
+</body>
+</html>
