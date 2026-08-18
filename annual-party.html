@@ -2643,6 +2643,42 @@ header::before{
   }
 }
 
+
+.date-card-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.date-card-actions .btn{
+  white-space:nowrap;
+  padding:6px 9px!important;
+  font-size:11px!important;
+}
+.selected-planning-date{
+  border:2px solid #d71920!important;
+  background:#fff5f5!important;
+  box-shadow:0 10px 24px rgba(215,25,32,.12)!important;
+}
+.poll-selected{
+  outline:2px solid #d71920;
+  outline-offset:2px;
+  background:#fff3f3!important;
+}
+.barrow{
+  cursor:pointer;
+  border-radius:8px;
+  transition:background .15s ease,outline .15s ease;
+}
+.barrow:hover{
+  background:#fafafa;
+}
+@media(max-width:520px){
+  .date-card-actions .btn{
+    padding:5px 7px!important;
+    font-size:10px!important;
+  }
+}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -2717,7 +2753,7 @@ if(!window.supabase){
       </div>
 
       <div class="card" style="margin-top:14px">
-        <h2>Top Pick Payment Summary</h2>
+        <h2>Payment Summary</h2>
         <div id="bestDateSummary" style="margin-bottom:14px"></div>
         <div class="stats" id="publicStats"></div>
       </div>
@@ -2947,6 +2983,7 @@ var foodFields = [
 let settings = structuredClone(DEFAULT_SETTINGS);
 let events = [];
 let currentEventId = null;
+let selectedPlanningDate = null;
 let responses = [];
 let venues = [];
 let editingResponseId = null;
@@ -2982,6 +3019,7 @@ async function loadAll(preferredEventId=null){
       || events[0];
 
     currentEventId=selected.id;
+    selectedPlanningDate=null;
     settings={
       eventType:selected.event_type||"annual",
       eventName:selected.event_name||`Maniacs Event ${selected.event_year||""}`.trim(),
@@ -3300,13 +3338,19 @@ function renderDateFamilyDetails(){
     const people=families.reduce((s,r)=>s+(Number(r.adults)||0)+(Number(r.kids3to10)||0),0);
 
     return `
-      <details class="date-family-block">
+      <details class="date-family-block ${selectedPlanningDate===d?"selected-planning-date":""}">
         <summary>
           <div>
             <strong>${orderedDates[0]===d && people>0?"🏆 ":""}${fmtDate(d)}</strong>
             <small>${families.length} ${families.length===1?"family":"families"} • ${people} people</small>
           </div>
-          <span class="date-family-chevron">⌄</span>
+          <div class="date-card-actions">
+            <button class="btn sm ${selectedPlanningDate===d?"primary":"ghost"}" type="button"
+              onclick="event.preventDefault();event.stopPropagation();selectPlanningDate('${d}')">
+              ${selectedPlanningDate===d?"Selected":"Show Payment"}
+            </button>
+            <span class="date-family-chevron">⌄</span>
+          </div>
         </summary>
 
         <div class="date-family-body">
@@ -3498,16 +3542,34 @@ function renderBestDateSummary(){
       </div>
     </div>`;
 }
-function renderStats(){
+
+function getSummaryDates(){
+  if(selectedPlanningDate){
+    const match=participationByDate().find(x=>x.date===selectedPlanningDate);
+    return match ? [match] : [];
+  }
   const ranked=participationByDate();
+  if(!ranked.length || ranked[0].count===0) return [];
+  const maxCount=ranked[0].count;
+  return ranked.filter(x=>x.count===maxCount);
+}
 
-  if(!ranked.length || ranked[0].count===0){
-    publicStats.innerHTML=`<div class="empty">No top date yet. Financial totals will appear after families select dates.</div>`;
+window.selectPlanningDate=(date)=>{
+  selectedPlanningDate = selectedPlanningDate===date ? null : date;
+  renderDateFamilyDetails();
+  renderStats();
+  renderBestDateSummary();
+  renderPoll();
+  toast(selectedPlanningDate ? `Payment summary set to ${fmtDate(selectedPlanningDate)}` : "Payment summary reset to top pick");
+};
+
+function renderStats(){
+  const summaryDates=getSummaryDates();
+
+  if(!summaryDates.length){
+    publicStats.innerHTML=`<div class="empty">Select a date or wait for date preference responses to see payment totals.</div>`;
   }else{
-    const maxCount=ranked[0].count;
-    const topDates=ranked.filter(x=>x.count===maxCount);
-
-    publicStats.innerHTML=topDates.map(top=>{
+    publicStats.innerHTML=summaryDates.map(top=>{
       const selectedFamilies=activeResponses().filter(r=>(r.dates||[]).includes(top.date));
       const totalDue=selectedFamilies.reduce((s,r)=>s+familyAmount(r),0);
       const totalPaid=selectedFamilies.filter(r=>r.paid).reduce((s,r)=>s+familyAmount(r),0);
@@ -3516,7 +3578,10 @@ function renderStats(){
       const unpaidFamilies=selectedFamilies.filter(r=>!r.paid).length;
 
       return `<div class="top-date-financial-block">
-        ${topDates.length>1?`<div class="top-date-financial-title">${fmtDate(top.date)}</div>`:""}
+        <div class="top-date-financial-title">
+          ${selectedPlanningDate ? "Selected Date" : (summaryDates.length>1 ? "Top Pick — Tie" : "Top Pick")}:
+          ${fmtDate(top.date)}
+        </div>
         <div class="stats top-date-money-grid">
           ${[
             ["Total Due",money(totalDue)],
@@ -3530,7 +3595,6 @@ function renderStats(){
     }).join("");
   }
 
-  // Admin dashboard keeps an all-response view because it is useful while planning.
   const families=activeResponses();
   const totalDue=families.reduce((s,r)=>s+familyAmount(r),0);
   const totalPaid=families.filter(r=>r.paid).reduce((s,r)=>s+familyAmount(r),0);
@@ -3547,55 +3611,11 @@ function renderStats(){
     ["Kids",t.kids3to10]
   ].map(([l,n])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
 }
-
-
-function dateCounts(){
-  return (settings.dates||[]).map(date=>{
-    const families=activeResponses().filter(r=>(r.dates||[]).includes(date));
-    const count=families.reduce((sum,r)=>
-      sum+(Number(r.adults)||0)+(Number(r.kids3to10)||0),0);
-    return {date,count};
-  });
-}
-
-function participationByDate(){
-  return dateCounts()
-    .map(x=>({
-      ...x,
-      families:activeResponses().filter(r=>(r.dates||[]).includes(x.date)).length
-    }))
-    .sort((a,b)=>b.count-a.count || b.families-a.families || a.date.localeCompare(b.date));
-}
-
-function renderTopParticipationDate(){
-  const box=document.getElementById("topParticipationDate");
-  if(!box) return;
-
-  const ranked=participationByDate();
-  if(!ranked.length || ranked[0].count===0){
-    box.innerHTML=`<div class="empty">No date responses yet.</div>`;
-    return;
-  }
-
-  const maxCount=ranked[0].count;
-  const topDates=ranked.filter(x=>x.count===maxCount);
-
-  box.innerHTML=topDates.map(top=>`
-    <div class="top-date-card" style="${topDates.length>1?'margin-bottom:10px':''}">
-      <div>
-        <span class="top-date-label">${topDates.length>1?'Current leaders — tied':'Current leader'}</span>
-        <strong>${fmtDate(top.date)}</strong>
-        <small>${top.count} people • ${top.families} ${top.families===1?"family":"families"}</small>
-      </div>
-      <div class="top-date-count">${top.count}</div>
-    </div>
-  `).join("");
-}
-
 function renderPoll(){
   const dc=participationByDate();
   const max=Math.max(1,...dc.map(x=>x.count));
-  pollBars.innerHTML=dc.map((x,i)=>`<div class="barrow ${i===0&&x.count>0?"poll-leader":""}">
+  pollBars.innerHTML=dc.map((x,i)=>`<div class="barrow ${i===0&&x.count>0?"poll-leader":""} ${selectedPlanningDate===x.date?"poll-selected":""}"
+    onclick="selectPlanningDate('${x.date}')">
     <span>${i===0&&x.count>0?"🏆 ":""}${new Date(x.date+"T12:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric"})}</span>
     <div class="bar"><i style="width:${x.count/max*100}%"></i></div>
     <b>${x.count}</b>
