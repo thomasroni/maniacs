@@ -3047,8 +3047,10 @@ async function loadAll(preferredEventId=null){
     setStatus("Connected");
   }catch(e){
     console.error(e);
-    setStatus("Could not connect",false);
-    toast("Supabase sync failed: "+(e.message||e));
+    const msg=e.message||String(e);
+    const isUiError=/not defined|Can't find variable|is not a function|undefined/i.test(msg);
+    setStatus(isUiError?"App error":"Could not connect",false);
+    toast((isUiError?"App render failed: ":"Supabase sync failed: ")+msg);
   }
 }
 
@@ -3611,6 +3613,50 @@ function renderStats(){
     ["Kids",t.kids3to10]
   ].map(([l,n])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
 }
+
+function dateCounts(){
+  return (settings.dates||[]).map(date=>{
+    const families=activeResponses().filter(r=>(r.dates||[]).includes(date));
+    const count=families.reduce((sum,r)=>
+      sum+(Number(r.adults)||0)+(Number(r.kids3to10)||0),0);
+    return {date,count};
+  });
+}
+
+function participationByDate(){
+  return dateCounts()
+    .map(x=>({
+      ...x,
+      families:activeResponses().filter(r=>(r.dates||[]).includes(x.date)).length
+    }))
+    .sort((a,b)=>b.count-a.count || b.families-a.families || a.date.localeCompare(b.date));
+}
+
+function renderTopParticipationDate(){
+  const box=document.getElementById("topParticipationDate");
+  if(!box) return;
+
+  const ranked=participationByDate();
+  if(!ranked.length || ranked[0].count===0){
+    box.innerHTML=`<div class="empty">No date responses yet.</div>`;
+    return;
+  }
+
+  const maxCount=ranked[0].count;
+  const topDates=ranked.filter(x=>x.count===maxCount);
+
+  box.innerHTML=topDates.map(top=>`
+    <div class="top-date-card" style="${topDates.length>1?'margin-bottom:10px':''}">
+      <div>
+        <span class="top-date-label">${topDates.length>1?'Current leaders — tied':'Current leader'}</span>
+        <strong>${fmtDate(top.date)}</strong>
+        <small>${top.count} people • ${top.families} ${top.families===1?"family":"families"}</small>
+      </div>
+      <div class="top-date-count">${top.count}</div>
+    </div>
+  `).join("");
+}
+
 function renderPoll(){
   const dc=participationByDate();
   const max=Math.max(1,...dc.map(x=>x.count));
