@@ -3475,16 +3475,35 @@ function renderBestDateSummary(){
     return;
   }
 
-  const maxCount=ranked[0].count;
-  const topDates=ranked.filter(x=>x.count===maxCount);
+  // If the user selected a planning date, show impact for that date.
+  // Otherwise show the top pick(s), including ties.
+  let displayDates=[];
+  if(selectedPlanningDate){
+    const selected=ranked.find(x=>x.date===selectedPlanningDate);
+    if(selected) displayDates=[selected];
+  }else{
+    const maxCount=ranked[0].count;
+    displayDates=ranked.filter(x=>x.count===maxCount);
+  }
+
+  if(!displayDates.length){
+    box.innerHTML=`<div class="empty">No date preference responses yet.</div>`;
+    return;
+  }
+
   const allFamilies=activeResponses();
   const allPeople=allFamilies.reduce((s,r)=>s+(Number(r.adults)||0)+(Number(r.kids3to10)||0),0);
 
   box.innerHTML=`
     <div class="best-date-summary-card">
-      <span class="best-date-kicker">🏆 ${topDates.length>1?"Top Date Picks — Tie":"Best Date Pick"}</span>
+      <span class="best-date-kicker">
+        🏆 ${selectedPlanningDate
+          ? "Selected Date Impact"
+          : (displayDates.length>1 ? "Top Date Picks — Tie" : "Best Date Pick")}
+      </span>
+
       <div class="top-picks-list">
-        ${topDates.map(top=>{
+        ${displayDates.map(top=>{
           const included=allFamilies.filter(r=>(r.dates||[]).includes(top.date));
           const excluded=allFamilies.filter(r=>!(r.dates||[]).includes(top.date));
           const pct=allPeople ? Math.round((top.count/allPeople)*100) : 0;
@@ -3497,7 +3516,8 @@ function renderBestDateSummary(){
             return acc;
           },{vegetarian:0,nonVegetarian:0,vegan:0,jain:0});
 
-          const excludedPeople=excluded.reduce((s,r)=>s+(Number(r.adults)||0)+(Number(r.kids3to10)||0),0);
+          const excludedPeople=excluded.reduce((s,r)=>
+            s+(Number(r.adults)||0)+(Number(r.kids3to10)||0),0);
 
           return `<div class="tied-date-pick">
             <div class="best-date-main">
@@ -3544,7 +3564,6 @@ function renderBestDateSummary(){
       </div>
     </div>`;
 }
-
 function getSummaryDates(){
   if(selectedPlanningDate){
     const match=participationByDate().find(x=>x.date===selectedPlanningDate);
