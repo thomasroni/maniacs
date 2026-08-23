@@ -116,9 +116,9 @@
 <body>
 <div class="app">
   <aside class="controls">
-    <div class="badge">1080 × 1080 • Instagram / Strava ready • v5</div>
+    <div class="badge">1080 × 1080 • Instagram / Strava ready • Reference Style</div>
     <h1>NJ Maniacs Marathon Card Generator</h1>
-    <p>Create a clean pre-marathon profile with the marathon title, runner name, total marathons and marathon PB.</p>
+    <p>Create the pre-marathon card in the approved Sydney Marathon style using the existing runner fields.</p>
 
     <div class="section">
       <label>Runner photo</label>
@@ -139,12 +139,12 @@
     </div>
 
     <div class="section">
-      <label>Runner name</label>
+      <label>Runner Name</label>
       <input id="name" value="NAVNEET SHARMA">
 
       <div class="grid2">
         <div>
-          <label>Total marathons</label>
+          <label>Total Marathons</label>
           <input id="marathons" value="5">
         </div>
         <div>
@@ -155,19 +155,21 @@
 
       <div class="grid2">
         <div>
+          <label>NYC Marathon PB</label>
+          <input id="nycPb" value="4:49 HR">
         </div>
       </div>
 
       <div class="grid2">
         <div>
-          <label>Marathon title</label>
+          <label>Marathon Title</label>
           <input id="nextRace" value="SYDNEY MARATHON">
         </div>
       </div>
 
       <div class="grid2">
         <div>
-          <label>Race date</label>
+          <label>Race Date</label>
           <input id="date" value="30 AUG 2026">
         </div>
         <div>
@@ -198,7 +200,7 @@ const canvas = document.getElementById('card');
 const ctx = canvas.getContext('2d');
 
 const ids = [
-  'name','marathons','pb','nextRace','date',
+  'name','marathons','pb','nycPb','nextRace','date',
   'accent','photoZoom','photoBrightness'
 ];
 const el = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
@@ -207,7 +209,7 @@ let photo = new Image();
 let logo = new Image();
 let hasPhoto = false;
 let hasLogo = false;
-let photoX = 715, photoY = 525;
+let photoX = 790, photoY = 540;
 let drag = false, lastX = 0, lastY = 0;
 
 function loadFile(input, target, onDone){
@@ -224,7 +226,7 @@ function loadFile(input, target, onDone){
 document.getElementById('photoUpload').addEventListener('change', () => {
   loadFile(document.getElementById('photoUpload'), photo, () => {
     hasPhoto = true;
-    photoX = 735; photoY = 530;
+    photoX = 790; photoY = 540;
     draw();
   });
 });
@@ -281,21 +283,26 @@ function drawBackground(){
   ctx.fillStyle='#050506';
   ctx.fillRect(0,0,1080,1080);
 
-  // soft right-side glow
-  let g=ctx.createRadialGradient(820,420,80,820,420,620);
-  g.addColorStop(0,'rgba(255,255,255,.07)');
-  g.addColorStop(1,'rgba(255,255,255,0)');
-  ctx.fillStyle=g; ctx.fillRect(0,0,1080,1080);
+  // subtle top-right light for photo area
+  let rg=ctx.createRadialGradient(820,300,40,820,300,700);
+  rg.addColorStop(0,'rgba(255,255,255,.08)');
+  rg.addColorStop(.45,'rgba(255,255,255,.025)');
+  rg.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=rg;
+  ctx.fillRect(0,0,1080,1080);
 
-  // subtle dot pattern
+  // dot texture concentrated behind left-center, matching the reference
   ctx.save();
-  ctx.globalAlpha=.18;
-  for(let y=125;y<980;y+=34){
-    for(let x=88;x<540;x+=34){
-      const a = 1 - Math.min(1, Math.abs(x-330)/320);
-      ctx.fillStyle=`rgba(255,255,255,${0.08*a})`;
+  for(let y=80;y<930;y+=38){
+    for(let x=195;x<660;x+=38){
+      const dx=(x-415)/330;
+      const dy=(y-470)/520;
+      const fade=Math.max(0,1-(dx*dx+dy*dy));
+      if(fade<=0) continue;
+      ctx.globalAlpha=.11*fade;
+      ctx.fillStyle='#ffffff';
       ctx.beginPath();
-      ctx.arc(x,y,12,0,Math.PI*2);
+      ctx.arc(x,y,14,0,Math.PI*2);
       ctx.fill();
     }
   }
@@ -306,31 +313,33 @@ function drawPhoto(){
   if(!hasPhoto) return;
   const z = parseFloat(el.photoZoom.value);
   const bright = parseFloat(el.photoBrightness.value);
-  const baseW = 620*z;
+
+  // Larger default portrait, designed to fill right half like the approved card.
+  const baseW = 690*z;
   const ratio = photo.height/photo.width;
   const baseH = baseW*ratio;
 
   ctx.save();
-  ctx.filter = `brightness(${bright}) saturate(1.05)`;
-
-  // fade mask
+  ctx.filter = `brightness(${bright}) saturate(1.08) contrast(1.03)`;
   ctx.drawImage(photo, photoX-baseW/2, photoY-baseH/2, baseW, baseH);
   ctx.filter='none';
 
-  // dark left-side overlay to blend into panel
-  const grad = ctx.createLinearGradient(430,0,760,0);
-  grad.addColorStop(0,'rgba(5,5,6,1)');
-  grad.addColorStop(.55,'rgba(5,5,6,.55)');
-  grad.addColorStop(1,'rgba(5,5,6,0)');
-  ctx.fillStyle=grad;
-  ctx.fillRect(385,0,420,1080);
+  // Strong left blend so typography remains clean.
+  let lg=ctx.createLinearGradient(390,0,720,0);
+  lg.addColorStop(0,'rgba(5,5,6,1)');
+  lg.addColorStop(.28,'rgba(5,5,6,.93)');
+  lg.addColorStop(.62,'rgba(5,5,6,.35)');
+  lg.addColorStop(1,'rgba(5,5,6,0)');
+  ctx.fillStyle=lg;
+  ctx.fillRect(360,0,420,1080);
 
-  // bottom fade
-  const b = ctx.createLinearGradient(0,820,0,1080);
-  b.addColorStop(0,'rgba(5,5,6,0)');
-  b.addColorStop(1,'rgba(5,5,6,1)');
-  ctx.fillStyle=b;
-  ctx.fillRect(0,800,1080,280);
+  // Bottom fade like the reference.
+  let bg=ctx.createLinearGradient(0,800,0,1080);
+  bg.addColorStop(0,'rgba(5,5,6,0)');
+  bg.addColorStop(.68,'rgba(5,5,6,.52)');
+  bg.addColorStop(1,'rgba(5,5,6,1)');
+  ctx.fillStyle=bg;
+  ctx.fillRect(0,780,1080,300);
   ctx.restore();
 }
 
@@ -366,29 +375,41 @@ function line(y, x2=540){
 function drawText(){
   const accent = el.accent.value;
 
-  chevrons(22,175,false);
-  chevrons(1035,175,true);
-  chevrons(1035,880,true);
+  // White diagonal stripes
+  chevrons(24,170,false);
+  chevrons(1036,155,true);
+  chevrons(1036,875,true);
 
-  ctx.strokeStyle=accent; ctx.lineWidth=5;
+  // Right orange bracket
+  ctx.strokeStyle=accent;
+  ctx.lineWidth=5;
   ctx.beginPath();
-  ctx.moveTo(1030,390); ctx.lineTo(1030,520);
-  ctx.lineTo(1062,545); ctx.lineTo(1062,735);
+  ctx.moveTo(1032,382);
+  ctx.lineTo(1032,505);
+  ctx.lineTo(1063,530);
+  ctx.lineTo(1063,715);
   ctx.stroke();
 
-  // MARATHON TITLE
+  // Marathon title – orange, bold, uppercase
   const title=(el.nextRace.value || 'SYDNEY MARATHON').toUpperCase();
   ctx.fillStyle=accent;
-  let titleSize=fitText(title,555,50,'900');
+  const titleSize=fitText(title,540,50,'900');
   ctx.font=`900 ${titleSize}px Arial`;
-  ctx.fillText(title,95,215);
+  ctx.fillText(title,94,225);
 
-  // DATE
+  // Date with simple calendar icon treatment
+  ctx.strokeStyle='#fff';
+  ctx.lineWidth=3;
+  ctx.strokeRect(96,256,28,26);
+  ctx.beginPath();
+  ctx.moveTo(102,252); ctx.lineTo(102,260);
+  ctx.moveTo(118,252); ctx.lineTo(118,260);
+  ctx.stroke();
   ctx.fillStyle='#fff';
   ctx.font='700 24px Arial';
-  ctx.fillText((el.date.value || '').toUpperCase(),100,260);
+  ctx.fillText((el.date.value || '').toUpperCase(),142,279);
 
-  // RUNNER NAME
+  // Big bold upper-case name.
   const name=(el.name.value || 'RUNNER NAME').toUpperCase();
   const words=name.split(/\s+/);
   let rows;
@@ -399,67 +420,81 @@ function drawText(){
     rows=[words.slice(0,mid).join(' '),words.slice(mid).join(' ')];
   }
 
-  let nameSize=96;
-  for(const row of rows) nameSize=Math.min(nameSize,fitText(row,570,96,'900'));
+  let nameSize=116;
+  for(const row of rows){
+    nameSize=Math.min(nameSize,fitText(row,560,116,'900'));
+  }
   ctx.fillStyle='#fff';
   ctx.font=`900 ${nameSize}px Arial`;
 
-  let nameY=400;
-  rows.forEach((row,i)=>ctx.fillText(row,48,nameY+i*(nameSize*.92)));
+  const nameStartY=438;
+  rows.forEach((row,i)=>{
+    ctx.fillText(row,42,nameStartY+i*(nameSize*.90));
+  });
 
-  const afterName=nameY+(rows.length-1)*(nameSize*.92)+38;
-  ctx.strokeStyle=accent; ctx.lineWidth=4;
-  ctx.beginPath();
-  ctx.moveTo(52,afterName); ctx.lineTo(565,afterName);
-  ctx.stroke();
+  const nameBottom=nameStartY+(rows.length-1)*(nameSize*.90)+24;
 
-  // TOTAL MARATHONS
-  let y=afterName+72;
-  ctx.strokeStyle=accent; ctx.lineWidth=4;
-  ctx.beginPath(); ctx.arc(92,y-5,34,0,Math.PI*2); ctx.stroke();
+  // Orange rule under name
   ctx.fillStyle=accent;
-  ctx.font='900 17px Arial';
-  ctx.fillText('RUN',71,y+2);
+  ctx.fillRect(48,nameBottom,510,4);
 
-  ctx.fillStyle='#ddd';
-  ctx.font='800 21px Arial';
-  ctx.fillText('TOTAL MARATHONS',145,y-12);
+  // Three compact records rows
+  let y=nameBottom+55;
+  const leftIconX=82;
+  const textX=145;
+  const lineEnd=438;
+
+  function statRow(iconTop, iconBottom, label, value){
+    // circle icon
+    ctx.strokeStyle=accent;
+    ctx.lineWidth=4;
+    ctx.beginPath();
+    ctx.arc(leftIconX,y+22,31,0,Math.PI*2);
+    ctx.stroke();
+
+    ctx.fillStyle=accent;
+    if(iconBottom){
+      ctx.font='900 15px Arial';
+      ctx.fillText(iconTop,leftIconX-18,y+18);
+      ctx.fillText(iconBottom,leftIconX-15,y+36);
+    } else {
+      ctx.font='900 22px Arial';
+      const w=ctx.measureText(iconTop).width;
+      ctx.fillText(iconTop,leftIconX-w/2,y+30);
+    }
+
+    ctx.fillStyle='#fff';
+    ctx.font='800 19px Arial';
+    ctx.fillText(label,textX,y+12);
+
+    ctx.fillStyle=accent;
+    ctx.font='900 35px Arial';
+    ctx.fillText(value,textX,y+48);
+
+    ctx.fillStyle=accent;
+    ctx.fillRect(48,y+68,lineEnd-48,2);
+    y += 86;
+  }
+
+  statRow('RUN','', 'TOTAL MARATHONS', el.marathons.value);
+  statRow('PB','', 'MARATHON PB', el.pb.value);
+  statRow('NYC','PB', 'NYC MARATHON PB', el.nycPb.value);
+
+  // Quote block at bottom-left to prevent dead space and match reference style.
+  y += 24;
   ctx.fillStyle=accent;
-  ctx.font='900 43px Arial';
-  ctx.fillText(el.marathons.value,145,y+32);
+  ctx.font='900 48px Georgia';
+  ctx.fillText('“',48,y+20);
 
-  ctx.strokeStyle=accent; ctx.lineWidth=2;
-  ctx.beginPath();
-  ctx.moveTo(55,y+54); ctx.lineTo(475,y+54);
-  ctx.stroke();
-
-  // MARATHON PB
-  y += 125;
-  ctx.strokeStyle=accent; ctx.lineWidth=4;
-  ctx.beginPath(); ctx.arc(92,y-5,34,0,Math.PI*2); ctx.stroke();
-  ctx.fillStyle=accent;
-  ctx.font='900 23px Arial';
-  ctx.fillText('PB',76,y+3);
-
-  ctx.fillStyle='#ddd';
-  ctx.font='800 21px Arial';
-  ctx.fillText('MARATHON PB',145,y-12);
-  ctx.fillStyle=accent;
-  ctx.font='900 42px Arial';
-  ctx.fillText(el.pb.value,145,y+32);
-
-  ctx.strokeStyle=accent; ctx.lineWidth=2;
-  ctx.beginPath();
-  ctx.moveTo(55,y+54); ctx.lineTo(475,y+54);
-  ctx.stroke();
-
-  // Fill lower area cleanly without adding another statistic.
-  y += 125;
   ctx.fillStyle='#fff';
-  ctx.font='800 22px Arial';
-  ctx.fillText('READY FOR THE START LINE',58,y);
+  ctx.font='500 24px Arial';
+  ctx.fillText('THE ONLY LIMIT',88,y+8);
+  ctx.fillText('IS THE ONE YOU',88,y+43);
+  ctx.fillText('SET YOURSELF.',88,y+78);
+
   ctx.fillStyle=accent;
-  ctx.fillRect(58,y+20,365,4);
+  ctx.font='900 48px Georgia';
+  ctx.fillText('”',315,y+78);
 }
 
 function draw(){
@@ -491,7 +526,7 @@ canvas.addEventListener('pointerup', ()=>drag=false);
 canvas.addEventListener('pointercancel', ()=>drag=false);
 
 document.getElementById('resetBtn').addEventListener('click', ()=>{
-  photoX=735; photoY=530; el.photoZoom.value='1'; draw();
+  photoX=790; photoY=540; el.photoZoom.value='1'; draw();
 });
 
 document.getElementById('downloadBtn').addEventListener('click', async ()=>{
