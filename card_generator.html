@@ -116,9 +116,9 @@
 <body>
 <div class="app">
   <aside class="controls">
-    <div class="badge">1080 × 1080 • Instagram / Strava ready</div>
+    <div class="badge">1080 × 1080 • Instagram / Strava ready • v5</div>
     <h1>NJ Maniacs Marathon Card Generator</h1>
-    <p>Create a pre-marathon runner profile card showing achievements so far, then export a PNG.</p>
+    <p>Create a clean pre-marathon profile with the marathon title, runner name, total marathons and marathon PB.</p>
 
     <div class="section">
       <label>Runner photo</label>
@@ -148,29 +148,19 @@
           <input id="marathons" value="5">
         </div>
         <div>
-          <label>Personal best</label>
+          <label>Marathon PB</label>
           <input id="pb" value="4:36 HR">
         </div>
       </div>
 
       <div class="grid2">
         <div>
-          <label>NYC Marathon PB</label>
-          <input id="nycPb" value="4:49 HR">
-        </div>
-        <div>
-          <label>NYC Marathon count</label>
-          <input id="nycm" value="1">
         </div>
       </div>
 
       <div class="grid2">
         <div>
-          <label>World Majors completed</label>
-          <input id="wm" value="2">
-        </div>
-        <div>
-          <label>Next race</label>
+          <label>Marathon title</label>
           <input id="nextRace" value="SYDNEY MARATHON">
         </div>
       </div>
@@ -208,7 +198,7 @@ const canvas = document.getElementById('card');
 const ctx = canvas.getContext('2d');
 
 const ids = [
-  'name','marathons','pb','nycPb','nycm','wm','nextRace','date',
+  'name','marathons','pb','nextRace','date',
   'accent','photoZoom','photoBrightness'
 ];
 const el = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
@@ -376,81 +366,100 @@ function line(y, x2=540){
 function drawText(){
   const accent = el.accent.value;
 
-  chevrons(24,170,false);
-  chevrons(1034,170,true);
-  chevrons(1034,840,true);
+  chevrons(22,175,false);
+  chevrons(1035,175,true);
+  chevrons(1035,880,true);
 
-  // orange side bracket
   ctx.strokeStyle=accent; ctx.lineWidth=5;
   ctx.beginPath();
-  ctx.moveTo(1030,380); ctx.lineTo(1030,520); ctx.lineTo(1062,544); ctx.lineTo(1062,710);
+  ctx.moveTo(1030,390); ctx.lineTo(1030,520);
+  ctx.lineTo(1062,545); ctx.lineTo(1062,735);
   ctx.stroke();
 
-  // name
-  const name = el.name.value.toUpperCase();
-  let nameSize = fitText(name, 500, 76, '800');
+  // MARATHON TITLE
+  const title=(el.nextRace.value || 'SYDNEY MARATHON').toUpperCase();
+  ctx.fillStyle=accent;
+  let titleSize=fitText(title,555,50,'900');
+  ctx.font=`900 ${titleSize}px Arial`;
+  ctx.fillText(title,95,215);
+
+  // DATE
   ctx.fillStyle='#fff';
-  ctx.font=`800 ${nameSize}px Arial`;
-  const words = name.split(/\s+/);
-  let rows=[];
-  if(words.length<=2){
-    rows=words;
-  }else{
+  ctx.font='700 24px Arial';
+  ctx.fillText((el.date.value || '').toUpperCase(),100,260);
+
+  // RUNNER NAME
+  const name=(el.name.value || 'RUNNER NAME').toUpperCase();
+  const words=name.split(/\s+/);
+  let rows;
+  if(words.length===1) rows=[words[0]];
+  else if(words.length===2) rows=words;
+  else {
     const mid=Math.ceil(words.length/2);
-    rows=[words.slice(0,mid).join(' '), words.slice(mid).join(' ')];
+    rows=[words.slice(0,mid).join(' '),words.slice(mid).join(' ')];
   }
-  let ny=390;
-  rows.forEach((r,i)=>{
-    ctx.fillText(r,20,ny+i*(nameSize*0.95));
-  });
 
-  // runner record block
+  let nameSize=96;
+  for(const row of rows) nameSize=Math.min(nameSize,fitText(row,570,96,'900'));
   ctx.fillStyle='#fff';
-  ctx.font='700 31px Arial';
-  ctx.fillText('Marathons',75,640);
-  ctx.font='800 34px Arial';
-  ctx.fillText(el.marathons.value,320,640);
-  line(660,545);
+  ctx.font=`900 ${nameSize}px Arial`;
 
-  ctx.fillStyle='#ddd';
-  ctx.font='400 20px Arial';
-  ctx.fillText('PB',75,720);
-  ctx.fillStyle='#fff';
-  ctx.font='400 32px Arial';
-  ctx.fillText(el.pb.value,75,755);
-  line(775,455);
+  let nameY=400;
+  rows.forEach((row,i)=>ctx.fillText(row,48,nameY+i*(nameSize*.92)));
 
-  ctx.fillStyle='#ddd';
-  ctx.font='400 20px Arial';
-  ctx.fillText('NYC PB',75,835);
-  ctx.fillStyle='#fff';
-  ctx.font='400 32px Arial';
-  ctx.fillText(el.nycPb.value,75,870);
-  line(890,545);
+  const afterName=nameY+(rows.length-1)*(nameSize*.92)+38;
+  ctx.strokeStyle=accent; ctx.lineWidth=4;
+  ctx.beginPath();
+  ctx.moveTo(52,afterName); ctx.lineTo(565,afterName);
+  ctx.stroke();
 
-  ctx.fillStyle='#ddd';
-  ctx.font='400 18px Arial';
-  ctx.fillText('NYCM',75,935);
-  ctx.fillText('WM',200,935);
-
-  roundedRect(72,948,78,78,8,'#fff',2);
-  roundedRect(195,948,78,78,8,'#fff',2);
-
+  // TOTAL MARATHONS
+  let y=afterName+72;
+  ctx.strokeStyle=accent; ctx.lineWidth=4;
+  ctx.beginPath(); ctx.arc(92,y-5,34,0,Math.PI*2); ctx.stroke();
   ctx.fillStyle=accent;
-  ctx.font='800 34px Arial';
-  ctx.fillText(el.nycm.value,93,998);
-  ctx.fillText(el.wm.value,216,998);
+  ctx.font='900 17px Arial';
+  ctx.fillText('RUN',71,y+2);
 
-  // next race badge
-  ctx.fillStyle='#fff';
-  ctx.font='700 18px Arial';
-  ctx.fillText('NEXT',330,946);
+  ctx.fillStyle='#ddd';
+  ctx.font='800 21px Arial';
+  ctx.fillText('TOTAL MARATHONS',145,y-12);
   ctx.fillStyle=accent;
+  ctx.font='900 43px Arial';
+  ctx.fillText(el.marathons.value,145,y+32);
+
+  ctx.strokeStyle=accent; ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(55,y+54); ctx.lineTo(475,y+54);
+  ctx.stroke();
+
+  // MARATHON PB
+  y += 125;
+  ctx.strokeStyle=accent; ctx.lineWidth=4;
+  ctx.beginPath(); ctx.arc(92,y-5,34,0,Math.PI*2); ctx.stroke();
+  ctx.fillStyle=accent;
+  ctx.font='900 23px Arial';
+  ctx.fillText('PB',76,y+3);
+
+  ctx.fillStyle='#ddd';
+  ctx.font='800 21px Arial';
+  ctx.fillText('MARATHON PB',145,y-12);
+  ctx.fillStyle=accent;
+  ctx.font='900 42px Arial';
+  ctx.fillText(el.pb.value,145,y+32);
+
+  ctx.strokeStyle=accent; ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(55,y+54); ctx.lineTo(475,y+54);
+  ctx.stroke();
+
+  // Fill lower area cleanly without adding another statistic.
+  y += 125;
+  ctx.fillStyle='#fff';
   ctx.font='800 22px Arial';
-  ctx.fillText(el.nextRace.value.toUpperCase(),330,976);
-  ctx.fillStyle='#ddd';
-  ctx.font='400 18px Arial';
-  ctx.fillText(el.date.value.toUpperCase(),330,1004);
+  ctx.fillText('READY FOR THE START LINE',58,y);
+  ctx.fillStyle=accent;
+  ctx.fillRect(58,y+20,365,4);
 }
 
 function draw(){
