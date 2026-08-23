@@ -116,7 +116,7 @@
 <body>
 <div class="app">
   <aside class="controls">
-    <div class="badge">1080 × 1080 • Instagram / Strava ready • Reference Style</div>
+    <div class="badge">1080 × 1080 • Instagram / Strava ready • Reference Style v7</div>
     <h1>NJ Maniacs Marathon Card Generator</h1>
     <p>Create the pre-marathon card in the approved Sydney Marathon style using the existing runner fields.</p>
 
@@ -311,35 +311,65 @@ function drawBackground(){
 
 function drawPhoto(){
   if(!hasPhoto) return;
+
   const z = parseFloat(el.photoZoom.value);
   const bright = parseFloat(el.photoBrightness.value);
 
-  // Larger default portrait, designed to fill right half like the approved card.
-  const baseW = 690*z;
-  const ratio = photo.height/photo.width;
-  const baseH = baseW*ratio;
+  // Keep the uploaded photo strictly on the RIGHT side of the card.
+  // This prevents the image/background from spilling under the left text panel
+  // when the user zooms or drags the photo.
+  const PHOTO_LEFT = 365;
+  const PHOTO_RIGHT = 1080;
+
+  const baseW = 690 * z;
+  const ratio = photo.height / photo.width;
+  const baseH = baseW * ratio;
 
   ctx.save();
+
+  // Hard clipping boundary for the photo area.
+  ctx.beginPath();
+  ctx.rect(PHOTO_LEFT, 0, PHOTO_RIGHT - PHOTO_LEFT, 1080);
+  ctx.clip();
+
   ctx.filter = `brightness(${bright}) saturate(1.08) contrast(1.03)`;
-  ctx.drawImage(photo, photoX-baseW/2, photoY-baseH/2, baseW, baseH);
-  ctx.filter='none';
+  ctx.drawImage(
+    photo,
+    photoX - baseW / 2,
+    photoY - baseH / 2,
+    baseW,
+    baseH
+  );
+  ctx.filter = 'none';
 
-  // Strong left blend so typography remains clean.
-  let lg=ctx.createLinearGradient(390,0,720,0);
-  lg.addColorStop(0,'rgba(5,5,6,1)');
-  lg.addColorStop(.28,'rgba(5,5,6,.93)');
-  lg.addColorStop(.62,'rgba(5,5,6,.35)');
-  lg.addColorStop(1,'rgba(5,5,6,0)');
-  ctx.fillStyle=lg;
-  ctx.fillRect(360,0,420,1080);
+  // Soft blend from the fixed black information panel into the image.
+  const lg = ctx.createLinearGradient(PHOTO_LEFT, 0, 700, 0);
+  lg.addColorStop(0, 'rgba(5,5,6,1)');
+  lg.addColorStop(.28, 'rgba(5,5,6,.96)');
+  lg.addColorStop(.62, 'rgba(5,5,6,.38)');
+  lg.addColorStop(1, 'rgba(5,5,6,0)');
+  ctx.fillStyle = lg;
+  ctx.fillRect(PHOTO_LEFT, 0, 380, 1080);
 
-  // Bottom fade like the reference.
-  let bg=ctx.createLinearGradient(0,800,0,1080);
-  bg.addColorStop(0,'rgba(5,5,6,0)');
-  bg.addColorStop(.68,'rgba(5,5,6,.52)');
-  bg.addColorStop(1,'rgba(5,5,6,1)');
-  ctx.fillStyle=bg;
-  ctx.fillRect(0,780,1080,300);
+  // Bottom fade stays inside the photo region only.
+  const bg = ctx.createLinearGradient(0, 800, 0, 1080);
+  bg.addColorStop(0, 'rgba(5,5,6,0)');
+  bg.addColorStop(.68, 'rgba(5,5,6,.52)');
+  bg.addColorStop(1, 'rgba(5,5,6,1)');
+  ctx.fillStyle = bg;
+  ctx.fillRect(PHOTO_LEFT, 780, PHOTO_RIGHT - PHOTO_LEFT, 300);
+
+  ctx.restore();
+
+  // Repaint a guaranteed solid left panel after the photo.
+  // This ensures no photo pixels ever appear beneath the name/stat area.
+  ctx.save();
+  const panelGrad = ctx.createLinearGradient(0, 0, PHOTO_LEFT + 55, 0);
+  panelGrad.addColorStop(0, 'rgba(5,5,6,1)');
+  panelGrad.addColorStop(.86, 'rgba(5,5,6,1)');
+  panelGrad.addColorStop(1, 'rgba(5,5,6,0)');
+  ctx.fillStyle = panelGrad;
+  ctx.fillRect(0, 0, PHOTO_LEFT + 55, 1080);
   ctx.restore();
 }
 
