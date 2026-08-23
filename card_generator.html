@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>NJ Maniacs Marathon Card Generator</title>
+<style>
+  :root{
+    --bg:#0c0c0d;
+    --panel:#171719;
+    --line:#ff4b00;
+    --muted:#a9a9ae;
+    --text:#fff;
+    --yellow:#ffd400;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:#0b0b0c;
+    color:#fff;
+    font-family:Arial,Helvetica,sans-serif;
+  }
+  .app{
+    display:grid;
+    grid-template-columns:minmax(320px,430px) 1fr;
+    min-height:100vh;
+  }
+  .controls{
+    padding:22px;
+    background:#111113;
+    border-right:1px solid #2a2a2e;
+    overflow:auto;
+  }
+  .controls h1{font-size:22px;margin:0 0 4px}
+  .controls p{font-size:13px;color:var(--muted);margin:0 0 18px}
+  .section{
+    margin:18px 0;
+    padding-top:16px;
+    border-top:1px solid #29292d;
+  }
+  .grid2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+  label{
+    display:block;
+    font-size:12px;
+    color:#d7d7da;
+    margin:0 0 5px;
+  }
+  input, select{
+    width:100%;
+    padding:10px 11px;
+    border-radius:8px;
+    border:1px solid #33343a;
+    background:#1a1a1e;
+    color:#fff;
+    outline:none;
+    margin-bottom:10px;
+  }
+  input[type="range"]{padding:0}
+  .btns{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  button{
+    border:0;
+    border-radius:9px;
+    padding:11px 14px;
+    cursor:pointer;
+    font-weight:700;
+  }
+  .primary{background:#ff4b00;color:#fff}
+  .secondary{background:#2a2b30;color:#fff}
+  .preview{
+    padding:22px;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    background:
+      radial-gradient(circle at 50% 20%, #1c1c20 0%, #0a0a0b 45%, #060607 100%);
+    overflow:auto;
+  }
+  .canvasWrap{
+    width:min(1080px,100%);
+    aspect-ratio:1/1;
+    position:relative;
+    box-shadow:0 18px 60px rgba(0,0,0,.55);
+  }
+  canvas{
+    width:100%;
+    height:100%;
+    display:block;
+    background:#000;
+    touch-action:none;
+  }
+  .help{font-size:12px;color:#999;margin-top:8px;line-height:1.45}
+  .badge{
+    display:inline-block;
+    padding:5px 8px;
+    background:#242429;
+    border-radius:20px;
+    font-size:11px;
+    color:#ddd;
+    margin-bottom:12px;
+  }
+  @media(max-width:900px){
+    .app{grid-template-columns:1fr}
+    .controls{border-right:0;border-bottom:1px solid #2a2a2e}
+    .preview{padding:12px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="controls">
+    <div class="badge">1080 × 1080 • Instagram / Strava ready</div>
+    <h1>NJ Maniacs Marathon Card Generator</h1>
+    <p>Upload a runner photo, enter the race details, then export a PNG.</p>
+
+    <div class="section">
+      <label>Runner photo</label>
+      <input id="photoUpload" type="file" accept="image/*">
+      <label>NJ Maniacs logo</label>
+      <input id="logoUpload" type="file" accept="image/*">
+      <div class="grid2">
+        <div>
+          <label>Photo zoom</label>
+          <input id="photoZoom" type="range" min="0.6" max="2.2" step="0.01" value="1">
+        </div>
+        <div>
+          <label>Photo brightness</label>
+          <input id="photoBrightness" type="range" min="0.65" max="1.35" step="0.01" value="1">
+        </div>
+      </div>
+      <div class="help">Tip: drag the photo directly on the card to reposition it.</div>
+    </div>
+
+    <div class="section">
+      <label>Runner name</label>
+      <input id="name" value="NAVNEET SHARMA">
+      <div class="grid2">
+        <div>
+          <label>Race name</label>
+          <input id="race" value="Sydney Marathon">
+        </div>
+        <div>
+          <label>Race date</label>
+          <input id="date" value="30 Aug 2026">
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <label>Finish time</label>
+          <input id="finish" value="3:36:28">
+        </div>
+        <div>
+          <label>Pace</label>
+          <input id="pace" value="5:05 /KM">
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <label>Overall place</label>
+          <input id="overall" value="1423">
+        </div>
+        <div>
+          <label>Overall field</label>
+          <input id="overallField" value="10500">
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <label>Age-group place</label>
+          <input id="agePlace" value="68">
+        </div>
+        <div>
+          <label>Age-group field</label>
+          <input id="ageField" value="1401">
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <label>Achievement headline</label>
+      <input id="achievement" value="SYDNEY MARATHON FINISHER">
+      <div class="grid2">
+        <div>
+          <label>Accent color</label>
+          <input id="accent" type="color" value="#ff4b00">
+        </div>
+        <div>
+          <label>Show ranking boxes</label>
+          <select id="showRanks">
+            <option value="yes" selected>Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="section btns">
+      <button class="primary" id="downloadBtn">Download PNG</button>
+      <button class="secondary" id="resetBtn">Reset photo position</button>
+    </div>
+    <div class="help">
+      Everything runs locally in your browser. No photo is uploaded anywhere.
+    </div>
+  </aside>
+
+  <main class="preview">
+    <div class="canvasWrap">
+      <canvas id="card" width="1080" height="1080"></canvas>
+    </div>
+  </main>
+</div>
+
+<script>
+const canvas = document.getElementById('card');
+const ctx = canvas.getContext('2d');
+
+const ids = [
+  'name','race','date','finish','pace','overall','overallField',
+  'agePlace','ageField','achievement','accent','showRanks',
+  'photoZoom','photoBrightness'
+];
+const el = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
+
+let photo = new Image();
+let logo = new Image();
+let hasPhoto = false;
+let hasLogo = false;
+let photoX = 715, photoY = 525;
+let drag = false, lastX = 0, lastY = 0;
+
+function loadFile(input, target, onDone){
+  const f = input.files && input.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    target.onload = onDone;
+    target.src = e.target.result;
+  };
+  reader.readAsDataURL(f);
+}
+
+document.getElementById('photoUpload').addEventListener('change', () => {
+  loadFile(document.getElementById('photoUpload'), photo, () => {
+    hasPhoto = true;
+    photoX = 735; photoY = 530;
+    draw();
+  });
+});
+document.getElementById('logoUpload').addEventListener('change', () => {
+  loadFile(document.getElementById('logoUpload'), logo, () => {
+    hasLogo = true;
+    draw();
+  });
+});
+
+ids.forEach(id => el[id].addEventListener('input', draw));
+
+function fitText(text, maxWidth, startSize, weight='700'){
+  let size = startSize;
+  ctx.font = `${weight} ${size}px Arial`;
+  while(ctx.measureText(text).width > maxWidth && size > 18){
+    size -= 2;
+    ctx.font = `${weight} ${size}px Arial`;
+  }
+  return size;
+}
+
+function roundedRect(x,y,w,h,r,stroke='#fff',lw=2){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+  ctx.lineWidth=lw;
+  ctx.strokeStyle=stroke;
+  ctx.stroke();
+}
+
+function chevrons(x,y,flip=false){
+  ctx.save();
+  ctx.translate(x,y);
+  if(flip) ctx.scale(-1,1);
+  ctx.strokeStyle='#fff';
+  ctx.lineWidth=13;
+  ctx.lineCap='square';
+  for(let i=0;i<3;i++){
+    let yy=i*34;
+    ctx.beginPath();
+    ctx.moveTo(0,yy+22);
+    ctx.lineTo(42,yy);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawBackground(){
+  ctx.fillStyle='#050506';
+  ctx.fillRect(0,0,1080,1080);
+
+  // soft right-side glow
+  let g=ctx.createRadialGradient(820,420,80,820,420,620);
+  g.addColorStop(0,'rgba(255,255,255,.07)');
+  g.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,1080,1080);
+
+  // subtle dot pattern
+  ctx.save();
+  ctx.globalAlpha=.18;
+  for(let y=125;y<980;y+=34){
+    for(let x=88;x<540;x+=34){
+      const a = 1 - Math.min(1, Math.abs(x-330)/320);
+      ctx.fillStyle=`rgba(255,255,255,${0.08*a})`;
+      ctx.beginPath();
+      ctx.arc(x,y,12,0,Math.PI*2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+function drawPhoto(){
+  if(!hasPhoto) return;
+  const z = parseFloat(el.photoZoom.value);
+  const bright = parseFloat(el.photoBrightness.value);
+  const baseW = 620*z;
+  const ratio = photo.height/photo.width;
+  const baseH = baseW*ratio;
+
+  ctx.save();
+  ctx.filter = `brightness(${bright}) saturate(1.05)`;
+
+  // fade mask
+  ctx.drawImage(photo, photoX-baseW/2, photoY-baseH/2, baseW, baseH);
+  ctx.filter='none';
+
+  // dark left-side overlay to blend into panel
+  const grad = ctx.createLinearGradient(430,0,760,0);
+  grad.addColorStop(0,'rgba(5,5,6,1)');
+  grad.addColorStop(.55,'rgba(5,5,6,.55)');
+  grad.addColorStop(1,'rgba(5,5,6,0)');
+  ctx.fillStyle=grad;
+  ctx.fillRect(385,0,420,1080);
+
+  // bottom fade
+  const b = ctx.createLinearGradient(0,820,0,1080);
+  b.addColorStop(0,'rgba(5,5,6,0)');
+  b.addColorStop(1,'rgba(5,5,6,1)');
+  ctx.fillStyle=b;
+  ctx.fillRect(0,800,1080,280);
+  ctx.restore();
+}
+
+function drawLogo(){
+  if(hasLogo){
+    const maxW=180,maxH=135;
+    let w=maxW,h=logo.height/logo.width*w;
+    if(h>maxH){h=maxH;w=logo.width/logo.height*h}
+    ctx.drawImage(logo,18,10,w,h);
+  }else{
+    // placeholder
+    ctx.fillStyle='#1c1c20';
+    ctx.fillRect(18,12,165,130);
+    ctx.fillStyle='#ffd400';
+    ctx.font='700 18px Arial';
+    ctx.fillText('NEW JERSEY',35,62);
+    ctx.font='900 26px Arial';
+    ctx.fillText('MANIACS',29,92);
+    ctx.font='10px Arial';
+    ctx.fillText('RACING SINCE 2014',62,111);
+  }
+}
+
+function line(y, x2=540){
+  ctx.strokeStyle=el.accent.value;
+  ctx.lineWidth=4;
+  ctx.beginPath();
+  ctx.moveTo(70,y);
+  ctx.lineTo(x2,y);
+  ctx.stroke();
+}
+
+function drawText(){
+  const accent = el.accent.value;
+
+  chevrons(24,170,false);
+  chevrons(1034,170,true);
+  chevrons(1034,840,true);
+
+  // orange side bracket
+  ctx.strokeStyle=accent; ctx.lineWidth=5;
+  ctx.beginPath();
+  ctx.moveTo(1030,380); ctx.lineTo(1030,520); ctx.lineTo(1062,544); ctx.lineTo(1062,710);
+  ctx.stroke();
+
+  // name
+  const name = el.name.value.toUpperCase();
+  let nameSize = fitText(name, 500, 76, '800');
+  ctx.fillStyle='#fff';
+  ctx.font=`800 ${nameSize}px Arial`;
+  const words = name.split(/\s+/);
+  let rows=[];
+  if(words.length<=2){
+    rows=words;
+  }else{
+    const mid=Math.ceil(words.length/2);
+    rows=[words.slice(0,mid).join(' '), words.slice(mid).join(' ')];
+  }
+  let ny=390;
+  rows.forEach((r,i)=>{
+    ctx.fillText(r,20,ny+i*(nameSize*0.95));
+  });
+
+  // achievement
+  ctx.fillStyle='#fff';
+  ctx.font='700 28px Arial';
+  ctx.fillText(el.achievement.value.toUpperCase(),70,620);
+  line(646,545);
+
+  // race + date
+  ctx.font='700 26px Arial';
+  ctx.fillText(el.race.value,70,690);
+  ctx.font='400 24px Arial';
+  ctx.fillText(el.date.value,330,690);
+
+  ctx.fillStyle='#ddd';
+  ctx.font='400 20px Arial';
+  ctx.fillText('FINISH TIME',70,748);
+  ctx.fillStyle='#fff';
+  ctx.font='500 46px Arial';
+  ctx.fillText(el.finish.value,70,793);
+  line(815,545);
+
+  ctx.fillStyle='#ddd';
+  ctx.font='400 20px Arial';
+  ctx.fillText('PACE',70,860);
+  ctx.fillStyle='#fff';
+  ctx.font='500 44px Arial';
+  ctx.fillText(el.pace.value,70,905);
+  line(928,545);
+
+  if(el.showRanks.value==='yes'){
+    ctx.fillStyle='#ddd';
+    ctx.font='400 18px Arial';
+    ctx.fillText('OVERALL',70,970);
+    ctx.fillText('AGE GROUP',285,970);
+
+    roundedRect(66,980,150,82,8,'#fff',2);
+    roundedRect(282,980,150,82,8,'#fff',2);
+
+    ctx.fillStyle=accent;
+    ctx.font='800 34px Arial';
+    ctx.fillText(el.overall.value,78,1018);
+    ctx.fillText(el.agePlace.value,294,1018);
+
+    ctx.fillStyle='#fff';
+    ctx.font='400 21px Arial';
+    ctx.fillText('/ '+el.overallField.value,78,1047);
+    ctx.fillText('/ '+el.ageField.value,294,1047);
+  }
+}
+
+function draw(){
+  drawBackground();
+  drawPhoto();
+  drawLogo();
+  drawText();
+}
+
+canvas.addEventListener('pointerdown', e=>{
+  if(!hasPhoto) return;
+  drag=true;
+  canvas.setPointerCapture(e.pointerId);
+  const r=canvas.getBoundingClientRect();
+  lastX=(e.clientX-r.left)*canvas.width/r.width;
+  lastY=(e.clientY-r.top)*canvas.height/r.height;
+});
+canvas.addEventListener('pointermove', e=>{
+  if(!drag) return;
+  const r=canvas.getBoundingClientRect();
+  const x=(e.clientX-r.left)*canvas.width/r.width;
+  const y=(e.clientY-r.top)*canvas.height/r.height;
+  photoX += x-lastX;
+  photoY += y-lastY;
+  lastX=x; lastY=y;
+  draw();
+});
+canvas.addEventListener('pointerup', ()=>drag=false);
+canvas.addEventListener('pointercancel', ()=>drag=false);
+
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  photoX=735; photoY=530; el.photoZoom.value='1'; draw();
+});
+
+document.getElementById('downloadBtn').addEventListener('click', ()=>{
+  draw();
+  const a=document.createElement('a');
+  const safe=(el.name.value || 'runner').trim().replace(/[^a-z0-9]+/gi,'_');
+  a.download=`${safe}_Sydney_Marathon_Card.png`;
+  a.href=canvas.toDataURL('image/png');
+  a.click();
+});
+
+draw();
+</script>
+</body>
+</html>
