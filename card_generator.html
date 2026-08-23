@@ -118,7 +118,7 @@
   <aside class="controls">
     <div class="badge">1080 × 1080 • Instagram / Strava ready</div>
     <h1>NJ Maniacs Marathon Card Generator</h1>
-    <p>Upload a runner photo, enter the race details, then export a PNG.</p>
+    <p>Create a pre-marathon runner profile card showing achievements so far, then export a PNG.</p>
 
     <div class="section">
       <label>Runner photo</label>
@@ -141,71 +141,54 @@
     <div class="section">
       <label>Runner name</label>
       <input id="name" value="NAVNEET SHARMA">
+
       <div class="grid2">
         <div>
-          <label>Race name</label>
-          <input id="race" value="Sydney Marathon">
+          <label>Total marathons</label>
+          <input id="marathons" value="5">
         </div>
+        <div>
+          <label>Personal best</label>
+          <input id="pb" value="4:36 HR">
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <label>NYC Marathon PB</label>
+          <input id="nycPb" value="4:49 HR">
+        </div>
+        <div>
+          <label>NYC Marathon count</label>
+          <input id="nycm" value="1">
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <label>World Majors completed</label>
+          <input id="wm" value="2">
+        </div>
+        <div>
+          <label>Next race</label>
+          <input id="nextRace" value="SYDNEY MARATHON">
+        </div>
+      </div>
+
+      <div class="grid2">
         <div>
           <label>Race date</label>
-          <input id="date" value="30 Aug 2026">
+          <input id="date" value="30 AUG 2026">
         </div>
-      </div>
-
-      <div class="grid2">
-        <div>
-          <label>Finish time</label>
-          <input id="finish" value="3:36:28">
-        </div>
-        <div>
-          <label>Pace</label>
-          <input id="pace" value="5:05 /KM">
-        </div>
-      </div>
-
-      <div class="grid2">
-        <div>
-          <label>Overall place</label>
-          <input id="overall" value="1423">
-        </div>
-        <div>
-          <label>Overall field</label>
-          <input id="overallField" value="10500">
-        </div>
-      </div>
-
-      <div class="grid2">
-        <div>
-          <label>Age-group place</label>
-          <input id="agePlace" value="68">
-        </div>
-        <div>
-          <label>Age-group field</label>
-          <input id="ageField" value="1401">
-        </div>
-      </div>
-    </div>
-
-    <div class="section">
-      <label>Achievement headline</label>
-      <input id="achievement" value="SYDNEY MARATHON FINISHER">
-      <div class="grid2">
         <div>
           <label>Accent color</label>
           <input id="accent" type="color" value="#ff4b00">
-        </div>
-        <div>
-          <label>Show ranking boxes</label>
-          <select id="showRanks">
-            <option value="yes" selected>Yes</option>
-            <option value="no">No</option>
-          </select>
         </div>
       </div>
     </div>
 
     <div class="section btns">
-      <button class="primary" id="downloadBtn">Download PNG</button>
+      <button class="primary" id="downloadBtn">Export PNG</button>
       <button class="secondary" id="resetBtn">Reset photo position</button>
     </div>
     <div class="help">
@@ -225,9 +208,8 @@ const canvas = document.getElementById('card');
 const ctx = canvas.getContext('2d');
 
 const ids = [
-  'name','race','date','finish','pace','overall','overallField',
-  'agePlace','ageField','achievement','accent','showRanks',
-  'photoZoom','photoBrightness'
+  'name','marathons','pb','nycPb','nycm','wm','nextRace','date',
+  'accent','photoZoom','photoBrightness'
 ];
 const el = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
 
@@ -422,53 +404,53 @@ function drawText(){
     ctx.fillText(r,20,ny+i*(nameSize*0.95));
   });
 
-  // achievement
+  // runner record block
   ctx.fillStyle='#fff';
-  ctx.font='700 28px Arial';
-  ctx.fillText(el.achievement.value.toUpperCase(),70,620);
-  line(646,545);
-
-  // race + date
-  ctx.font='700 26px Arial';
-  ctx.fillText(el.race.value,70,690);
-  ctx.font='400 24px Arial';
-  ctx.fillText(el.date.value,330,690);
+  ctx.font='700 31px Arial';
+  ctx.fillText('Marathons',75,640);
+  ctx.font='800 34px Arial';
+  ctx.fillText(el.marathons.value,320,640);
+  line(660,545);
 
   ctx.fillStyle='#ddd';
   ctx.font='400 20px Arial';
-  ctx.fillText('FINISH TIME',70,748);
+  ctx.fillText('PB',75,720);
   ctx.fillStyle='#fff';
-  ctx.font='500 46px Arial';
-  ctx.fillText(el.finish.value,70,793);
-  line(815,545);
+  ctx.font='400 32px Arial';
+  ctx.fillText(el.pb.value,75,755);
+  line(775,455);
 
   ctx.fillStyle='#ddd';
   ctx.font='400 20px Arial';
-  ctx.fillText('PACE',70,860);
+  ctx.fillText('NYC PB',75,835);
   ctx.fillStyle='#fff';
-  ctx.font='500 44px Arial';
-  ctx.fillText(el.pace.value,70,905);
-  line(928,545);
+  ctx.font='400 32px Arial';
+  ctx.fillText(el.nycPb.value,75,870);
+  line(890,545);
 
-  if(el.showRanks.value==='yes'){
-    ctx.fillStyle='#ddd';
-    ctx.font='400 18px Arial';
-    ctx.fillText('OVERALL',70,970);
-    ctx.fillText('AGE GROUP',285,970);
+  ctx.fillStyle='#ddd';
+  ctx.font='400 18px Arial';
+  ctx.fillText('NYCM',75,935);
+  ctx.fillText('WM',200,935);
 
-    roundedRect(66,980,150,82,8,'#fff',2);
-    roundedRect(282,980,150,82,8,'#fff',2);
+  roundedRect(72,948,78,78,8,'#fff',2);
+  roundedRect(195,948,78,78,8,'#fff',2);
 
-    ctx.fillStyle=accent;
-    ctx.font='800 34px Arial';
-    ctx.fillText(el.overall.value,78,1018);
-    ctx.fillText(el.agePlace.value,294,1018);
+  ctx.fillStyle=accent;
+  ctx.font='800 34px Arial';
+  ctx.fillText(el.nycm.value,93,998);
+  ctx.fillText(el.wm.value,216,998);
 
-    ctx.fillStyle='#fff';
-    ctx.font='400 21px Arial';
-    ctx.fillText('/ '+el.overallField.value,78,1047);
-    ctx.fillText('/ '+el.ageField.value,294,1047);
-  }
+  // next race badge
+  ctx.fillStyle='#fff';
+  ctx.font='700 18px Arial';
+  ctx.fillText('NEXT',330,946);
+  ctx.fillStyle=accent;
+  ctx.font='800 22px Arial';
+  ctx.fillText(el.nextRace.value.toUpperCase(),330,976);
+  ctx.fillStyle='#ddd';
+  ctx.font='400 18px Arial';
+  ctx.fillText(el.date.value.toUpperCase(),330,1004);
 }
 
 function draw(){
@@ -503,13 +485,41 @@ document.getElementById('resetBtn').addEventListener('click', ()=>{
   photoX=735; photoY=530; el.photoZoom.value='1'; draw();
 });
 
-document.getElementById('downloadBtn').addEventListener('click', ()=>{
+document.getElementById('downloadBtn').addEventListener('click', async ()=>{
   draw();
-  const a=document.createElement('a');
   const safe=(el.name.value || 'runner').trim().replace(/[^a-z0-9]+/gi,'_');
-  a.download=`${safe}_Sydney_Marathon_Card.png`;
-  a.href=canvas.toDataURL('image/png');
-  a.click();
+  const filename=`${safe}_Runner_Profile.png`;
+
+  canvas.toBlob(async (blob)=>{
+    if(!blob){
+      alert('Could not create image. Please try again.');
+      return;
+    }
+
+    // Best experience on iPhone/iPad: open the generated image so user can Save to Photos.
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    if(isIOS){
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, '_blank');
+      if(!win){
+        alert('Please allow pop-ups, then tap Download PNG again.');
+      }
+      setTimeout(()=>URL.revokeObjectURL(url), 60000);
+      return;
+    }
+
+    // Desktop/Android: download as a normal PNG file.
+    const url = URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 3000);
+  }, 'image/png', 1.0);
 });
 
 draw();
