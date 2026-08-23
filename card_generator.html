@@ -116,7 +116,7 @@
 <body>
 <div class="app">
   <aside class="controls">
-    <div class="badge">1080 × 1080 • Instagram / Strava ready • Reference Style v7</div>
+    <div class="badge">1080 × 1080 • Instagram / Strava ready • Reference Style v8</div>
     <h1>NJ Maniacs Marathon Card Generator</h1>
     <p>Create the pre-marathon card in the approved Sydney Marathon style using the existing runner fields.</p>
 
@@ -155,8 +155,6 @@
 
       <div class="grid2">
         <div>
-          <label>NYC Marathon PB</label>
-          <input id="nycPb" value="4:49 HR">
         </div>
       </div>
 
@@ -200,7 +198,7 @@ const canvas = document.getElementById('card');
 const ctx = canvas.getContext('2d');
 
 const ids = [
-  'name','marathons','pb','nycPb','nextRace','date',
+  'name','marathons','pb','nextRace','date',
   'accent','photoZoom','photoBrightness'
 ];
 const el = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
@@ -508,10 +506,9 @@ function drawText(){
 
   statRow('RUN','', 'TOTAL MARATHONS', el.marathons.value);
   statRow('PB','', 'MARATHON PB', el.pb.value);
-  statRow('NYC','PB', 'NYC MARATHON PB', el.nycPb.value);
 
   // Quote block at bottom-left to prevent dead space and match reference style.
-  y += 24;
+  y += 12;
   ctx.fillStyle=accent;
   ctx.font='900 48px Georgia';
   ctx.fillText('“',48,y+20);
