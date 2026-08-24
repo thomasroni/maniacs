@@ -3561,7 +3561,38 @@ saveRsvp.onclick=async()=>{
   }
 };
 
-function activeResponses(){return responses.filter(r=>r.status!=="NO")}
+function activeResponses(){
+  // One logical family per case-insensitive normalized name.
+  // This prevents an old/duplicate RSVP row from showing the same family
+  // as both included and excluded after a name correction.
+  const byName=new Map();
+
+  responses
+    .filter(r=>r.status==="YES")
+    .forEach(r=>{
+      const key=normalizeMemberName(r.name);
+      if(!key) return;
+
+      if(!byName.has(key)){
+        byName.set(key,{
+          ...r,
+          dates:[...new Set(r.dates||[])]
+        });
+        return;
+      }
+
+      const existing=byName.get(key);
+
+      // Responses arrive newest-first, so keep the newest row's counts/food/name,
+      // but merge all historical date selections for that same family.
+      existing.dates=[...new Set([...(existing.dates||[]),...(r.dates||[])])];
+
+      // Preserve paid if either duplicate record was marked paid.
+      existing.paid=!!existing.paid || !!r.paid;
+    });
+
+  return [...byName.values()];
+}
 function totals(){
   const a=activeResponses();
   const t={families:a.length,adults:0,kids3to10:0,people:0,vegetarian:0,nonVegetarian:0,vegan:0,jain:0};
