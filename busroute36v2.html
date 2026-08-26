@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#08111f">
+  <title>Bus Route 36</title>
+  <style>
+    :root{
+      --bg:#08111f;--card:#111c2e;--card2:#17243a;--text:#f7f9fc;
+      --muted:#a8b3c7;--green:#45d483;--blue:#65a7ff;--border:rgba(255,255,255,.10)
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;min-height:100vh;color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+      background:radial-gradient(circle at top right,#17345c 0,transparent 35%),linear-gradient(180deg,#08111f,#0d1727)
+    }
+    .app{max-width:720px;margin:auto;padding:calc(18px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom))}
+    h1{font-size:28px;margin:0 0 6px}.subtitle,.status,.route,.small{color:var(--muted)}
+    .subtitle{margin-bottom:18px}.status{font-size:13px;margin-bottom:10px;min-height:18px}
+    .card{background:rgba(17,28,46,.97);border:1px solid var(--border);border-radius:20px;padding:18px;margin-bottom:14px;box-shadow:0 12px 30px rgba(0,0,0,.28)}
+    .choice{cursor:pointer}.choice:active{transform:scale(.985)}.choice-title{font-size:20px;font-weight:800;margin-bottom:6px}
+    button{border:0;border-radius:14px;padding:13px 16px;font-size:16px;font-weight:800;cursor:pointer}
+    .primary{background:var(--green);color:#062412}.secondary{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+    .location-actions,.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}.location-actions button,.toolbar button{flex:1}.planner{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:14px}.planner label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.planner select{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:14px;padding:13px 14px;font-size:16px;font-weight:750}
+    .header-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+    .header-row h2{margin:0}.pill{font-size:12px;padding:6px 9px;border-radius:999px;background:rgba(69,212,131,.14);color:#8af0b2}
+    .trip{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;padding:14px 0;border-bottom:1px solid var(--border)}
+    .trip:last-child{border-bottom:0}.trip.next{background:rgba(69,212,131,.08);margin:0 -8px;padding:14px 8px;border-radius:14px}
+    .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+    .time{font-size:21px;font-weight:800}.right{text-align:right}.arrow{color:var(--muted);font-size:20px}
+    .meta{grid-column:1/-1;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+    .gate{display:inline-block;background:rgba(101,167,255,.16);color:#b9d6ff;border:1px solid rgba(101,167,255,.4);padding:6px 10px;border-radius:999px;font-weight:900}.last-bus{display:inline-block;background:rgba(255,204,102,.14);color:#ffe09c;border:1px solid rgba(255,204,102,.35);padding:6px 10px;border-radius:999px;font-weight:900}
+    .empty{text-align:center;padding:30px 8px;color:var(--muted)}.empty strong{display:block;color:var(--text);font-size:18px;margin-bottom:14px}
+    .notice{background:rgba(255,204,102,.10);border:1px solid rgba(255,204,102,.25);color:#ffe09c;border-radius:14px;padding:12px;margin-bottom:14px}
+    .small{font-size:12px;line-height:1.5}.hidden{display:none!important}
+  </style>
+</head>
+<body>
+<div class="app">
+  <section id="home">
+    <h1>Bus Route 36</h1>
+    <div class="subtitle">Airport Plaza ↔ Port Authority</div>
+    <div id="locationStatus" class="status">Tap below to detect the nearest stop.</div>
+    <div class="location-actions">
+      <button id="locationButton" class="primary" onclick="requestLocation()">Use My Location</button>
+    </div>
+    <div class="card choice" onclick="openDirection('going')">
+      <div class="choice-title">Going</div>
+      <div class="route">Airport Plaza → Port Authority</div>
+    </div>
+    <div class="card choice" onclick="openDirection('return')">
+      <div class="choice-title">Coming Back</div>
+      <div class="route">Port Authority → Airport Plaza</div>
+    </div>
+  </section>
+
+  <section id="schedule" class="hidden">
+    <div class="toolbar">
+      <button class="secondary" onclick="goBack()">← Back</button>
+      <button id="viewToggle" class="secondary" onclick="toggleView()">View Full Schedule</button>
+    </div>
+
+    <div class="planner">
+      <label for="planDate">Plan schedule for</label>
+      <select id="planDate" onchange="changePlanDate(this.value)">
+        <option value="today">Today / Auto</option>
+        <option value="monday">Monday</option>
+        <option value="tuesday">Tuesday</option>
+        <option value="wednesday">Wednesday</option>
+        <option value="thursday">Thursday</option>
+        <option value="friday">Friday</option>
+      </select>
+    </div>
+    <div class="small" style="margin:-6px 0 14px">
+      Select a weekday to plan ahead. Each trip shows the remaining time from now.
+    </div>
+
+    <div class="card">
+      <div class="header-row">
+        <h2 id="directionTitle"></h2>
+        <span id="dayPill" class="pill"></span>
+      </div>
+      <div id="directionRoute" class="route"></div>
+    </div>
+
+    <div id="weekendNotice" class="notice hidden">No Route 36 commuter schedule is listed for Saturday or Sunday in the supplied PDFs.</div>
+    <div id="tripList" class="card"></div>
+    <div class="small">Times are approximate and based on the supplied Academy Bus schedules. Port Authority gate numbers are shown for each return trip.</div>
+  </section>
+</div>
+
+<script>
+const stops={
+  airport:{lat:40.4287,lon:-74.2997,name:"Airport Plaza"},
+  pabt:{lat:40.7569,lon:-73.9903,name:"Port Authority"}
+};
+
+const schedules={
+  monThu:{
+    going:[
+      {d:"4:25 AM",a:"5:25 AM"},{d:"4:45 AM",a:"5:45 AM"},{d:"5:05 AM",a:"6:05 AM"},
+      {d:"5:10 AM",a:"6:10 AM"},{d:"5:27 AM",a:"6:22 AM"},{d:"5:40 AM",a:"6:40 AM"},
+      {d:"5:55 AM",a:"6:55 AM"},{d:"6:10 AM",a:"7:10 AM"},{d:"6:30 AM",a:"7:20 AM"},
+      {d:"6:35 AM",a:"7:35 AM"},{d:"7:00 AM",a:"8:00 AM"},{d:"7:20 AM",a:"8:20 AM"},
+      {d:"7:40 AM",a:"8:40 AM"},{d:"8:55 AM",a:"9:55 AM"}
+    ],
+    return:[
+      {d:"12:30 PM",a:"1:30 PM",g:7},{d:"2:00 PM",a:"3:00 PM",g:7},{d:"2:30 PM",a:"3:30 PM",g:9},
+      {d:"3:00 PM",a:"4:00 PM",g:7},{d:"3:20 PM",a:"4:20 PM",g:9},{d:"3:50 PM",a:"4:50 PM",g:7},
+      {d:"4:10 PM",a:"5:10 PM",g:7},{d:"4:20 PM",a:"5:20 PM",g:9},{d:"4:40 PM",a:"5:40 PM",g:9},
+      {d:"5:10 PM",a:"6:10 PM",g:7},{d:"5:20 PM",a:"6:20 PM",g:9},{d:"5:35 PM",a:"6:35 PM",g:7},
+      {d:"6:00 PM",a:"7:00 PM",g:9},{d:"7:00 PM",a:"8:00 PM",g:7}
+    ]
+  },
+  friday:{
+    going:[
+      {d:"4:25 AM",a:"5:25 AM"},{d:"4:45 AM",a:"5:45 AM"},{d:"5:05 AM",a:"6:05 AM"},
+      {d:"5:10 AM",a:"6:10 AM"},{d:"5:40 AM",a:"6:40 AM"},{d:"5:55 AM",a:"6:55 AM"},
+      {d:"6:20 AM",a:"7:20 AM"},{d:"6:35 AM",a:"7:37 AM"},{d:"7:00 AM",a:"8:00 AM"},
+      {d:"7:40 AM",a:"8:40 AM"}
+    ],
+    return:[
+      {d:"12:30 PM",a:"1:30 PM",g:7},{d:"2:00 PM",a:"3:00 PM",g:7},{d:"2:30 PM",a:"3:30 PM",g:9},
+      {d:"3:00 PM",a:"4:00 PM",g:7},{d:"3:20 PM",a:"4:20 PM",g:9},{d:"3:50 PM",a:"4:50 PM",g:7},
+      {d:"4:10 PM",a:"5:10 PM",g:7},{d:"4:20 PM",a:"5:15 PM",g:9},{d:"5:20 PM",a:"6:20 PM",g:9},
+      {d:"5:35 PM",a:"6:35 PM",g:7},{d:"6:00 PM",a:"7:00 PM",g:9},{d:"7:00 PM",a:"8:00 PM",g:7}
+    ]
+  }
+};
+
+let currentDirection="going";
+let fullSchedule=false;
+let planMode="today";
+
+function parseToday(str){
+  const [time,ampm]=str.split(" ");
+  let [h,m]=time.split(":").map(Number);
+  if(ampm==="PM"&&h!==12)h+=12;
+  if(ampm==="AM"&&h===12)h=0;
+  const d=new Date();d.setHours(h,m,0,0);return d;
+}
+
+function serviceType(date){
+  const day=date.getDay();
+  if(day===5)return"friday";
+  if(day>=1&&day<=4)return"monThu";
+  return"weekend";
+}
+
+function formatCountdown(totalMinutes){
+  const minutes=Math.max(0,Math.ceil(totalMinutes));
+  const days=Math.floor(minutes/1440);
+  const remainingAfterDays=minutes%1440;
+  const hours=Math.floor(remainingAfterDays/60);
+  const mins=remainingAfterDays%60;
+  const parts=[];
+  if(days)parts.push(`${days} day${days===1?"":"s"}`);
+  if(hours)parts.push(`${hours} hr`);
+  if(mins||parts.length===0)parts.push(`${mins} min`);
+  return parts.join(" ");
+}
+
+function upcomingWeekday(targetDay){
+  const now=new Date();
+  const result=new Date(now);
+  result.setHours(0,0,0,0);
+
+  // Pick the next occurrence, but if today is the selected weekday,
+  // use today so the countdown remains meaningful for today's buses.
+  let delta=(targetDay-result.getDay()+7)%7;
+  result.setDate(result.getDate()+delta);
+  return result;
+}
+
+function selectedServiceDate(){
+  if(planMode==="monday")return upcomingWeekday(1);
+  if(planMode==="tuesday")return upcomingWeekday(2);
+  if(planMode==="wednesday")return upcomingWeekday(3);
+  if(planMode==="thursday")return upcomingWeekday(4);
+  if(planMode==="friday")return upcomingWeekday(5);
+  return new Date();
+}
+
+function tripDateFor(serviceDate,timeStr){
+  const [time,ampm]=timeStr.split(" ");
+  let [h,m]=time.split(":").map(Number);
+  if(ampm==="PM"&&h!==12)h+=12;
+  if(ampm==="AM"&&h===12)h=0;
+  const d=new Date(serviceDate);
+  d.setHours(h,m,0,0);
+  return d;
+}
+
+function changePlanDate(value){
+  planMode=value;
+
+  // When planning a specific weekday, show the entire day immediately.
+  // "Today / Auto" returns to the normal next-2-hours view.
+  fullSchedule=value!=="today";
+  document.getElementById("viewToggle").textContent=
+    fullSchedule?"Show Next 2 Hours":"View Full Schedule";
+  render();
+}
+
+function distanceMiles(aLat,aLon,bLat,bLon){
+  const R=3958.8,toRad=x=>x*Math.PI/180;
+  const dLat=toRad(bLat-aLat),dLon=toRad(bLon-aLon);
+  const q=Math.sin(dLat/2)**2+Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(q));
+}
+
+function requestLocation(){
+  const status=document.getElementById("locationStatus");
+  const button=document.getElementById("locationButton");
+  if(!window.isSecureContext){
+    status.textContent="Location requires HTTPS. Open the deployed GitHub Pages link.";
+    return;
+  }
+  if(!navigator.geolocation){
+    status.textContent="Location is not supported. Choose a direction below.";
+    return;
+  }
+  button.disabled=true;button.textContent="Finding Location…";
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const {latitude,longitude}=pos.coords;
+    const da=distanceMiles(latitude,longitude,stops.airport.lat,stops.airport.lon);
+    const dp=distanceMiles(latitude,longitude,stops.pabt.lat,stops.pabt.lon);
+    const dir=da<=dp?"going":"return";
+    localStorage.setItem("route36Direction",dir);
+    status.textContent=`Nearest stop: ${dir==="going"?"Airport Plaza":"Port Authority"}`;
+    button.disabled=false;button.textContent="Use My Location";
+    openDirection(dir);
+  },err=>{
+    button.disabled=false;button.textContent="Try Location Again";
+    status.textContent=err.code===1
+      ?"Location permission is blocked. Allow location for this site in Safari settings."
+      :"Location could not be detected. Choose a direction below.";
+  },{enableHighAccuracy:true,timeout:20000,maximumAge:60000});
+}
+
+function openDirection(dir){
+  currentDirection=dir;fullSchedule=false;planMode="today";
+  document.getElementById("planDate").value="today";
+  document.getElementById("home").classList.add("hidden");
+  document.getElementById("schedule").classList.remove("hidden");
+  document.getElementById("viewToggle").textContent="View Full Schedule";
+  render();
+}
+
+function goBack(){
+  document.getElementById("schedule").classList.add("hidden");
+  document.getElementById("home").classList.remove("hidden");
+}
+
+function toggleView(){
+  fullSchedule=!fullSchedule;
+  document.getElementById("viewToggle").textContent=fullSchedule?"Show Next 2 Hours":"View Full Schedule";
+  render();
+}
+
+function render(){
+  const isGoing=currentDirection==="going";
+  const serviceDate=selectedServiceDate();
+  const service=serviceType(serviceDate);
+  const title=document.getElementById("directionTitle");
+  const route=document.getElementById("directionRoute");
+  const pill=document.getElementById("dayPill");
+  const list=document.getElementById("tripList");
+  const weekend=document.getElementById("weekendNotice");
+
+  title.textContent=isGoing?"Going":"Coming Back";
+  route.innerHTML=isGoing
+    ?"Airport Plaza → Port Authority"
+    :"Port Authority → Airport Plaza<br><span style='font-size:14px;color:var(--muted)'>Exact gate shown on every trip</span>";
+
+  if(service==="weekend"){
+    pill.textContent="Weekend";
+    weekend.classList.remove("hidden");
+    list.innerHTML='<div class="empty"><strong>No scheduled service shown for today.</strong></div>';
+    return;
+  }
+
+  weekend.classList.add("hidden");
+  const dateLabel=serviceDate.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+  const serviceLabel=service==="friday"?"Friday":"Mon–Thu";
+  pill.textContent=`${serviceLabel} · ${dateLabel}`;
+
+  const now=new Date();
+  const all=schedules[service][currentDirection].map(t=>({...t,departDate:tripDateFor(serviceDate,t.d)}));
+  const visible=fullSchedule?all:all.filter(t=>{
+    const mins=(t.departDate-now)/60000;
+    return mins>=0&&mins<=120;
+  });
+
+  if(!visible.length){
+    list.innerHTML=fullSchedule
+      ?'<div class="empty"><strong>No trips are listed.</strong></div>'
+      :'<div class="empty"><strong>No buses in the next 2 hours.</strong><button class="primary" onclick="toggleView()">📅 View Full Schedule</button></div>';
+    return;
+  }
+
+  const lastTrip=all[all.length-1];
+  list.innerHTML=visible.map((t,i)=>{
+    const rawMins=(t.departDate-now)/60000;
+    const countdown=rawMins<=-1
+      ?"Departed"
+      :(rawMins<1?"Leaving now":`Leaves in ${formatCountdown(rawMins)}`);
+    const gate=!isGoing?`<span class="gate">🚪 Gate ${t.g}</span>`:"";
+    const isLast=t.d===lastTrip.d&&t.a===lastTrip.a;
+    const lastBadge=isLast?`<span class="last-bus">Last Bus</span>`:"";
+    return `
+      <div class="trip ${i===0&&!fullSchedule?"next":""}">
+        <div><div class="label">Depart</div><div class="time">${t.d}</div></div>
+        <div class="arrow">→</div>
+        <div class="right"><div class="label">Arrive</div><div class="time">${t.a}</div></div>
+        <div class="meta">${gate}${lastBadge}<span><strong>Remaining:</strong> ${countdown}</span></div>
+      </div>`;
+  }).join("");
+}
+
+(function init(){
+  const saved=localStorage.getItem("route36Direction");
+  if(saved==="going"||saved==="return"){
+    document.getElementById("locationStatus").textContent=`Last direction: ${saved==="going"?"Going":"Coming Back"}`;
+  }
+})();
+
+setInterval(()=>{if(!document.getElementById("schedule").classList.contains("hidden"))render()},60000);
+</script>
+</body>
+</html>
