@@ -3001,6 +3001,17 @@ if(!window.supabase){
       <textarea id="sDates" class="hidden"></textarea>
     </div>
 
+    <div class="field">
+      <label>Final RSVP Date</label>
+      <div class="notice" id="dateLockStatus">No final date is locked. Members can select any published date.</div>
+      <div class="row" style="align-items:end;flex-wrap:wrap">
+        <select id="lockPartyDate" style="flex:1;min-width:210px"></select>
+        <button class="btn good" id="lockPartyDateBtn" type="button">Lock Date</button>
+        <button class="btn ghost hidden" id="unlockPartyDateBtn" type="button">Unlock Date</button>
+      </div>
+      <small style="color:var(--muted)">Locking makes this the only date available for new or updated RSVPs. Existing RSVP history is preserved.</small>
+    </div>
+
     <div class="field"><label>Target Budget / Person ($)</label><input id="sBudget" type="number" value="50"></div>
 
     <h3 style="margin-top:18px">💵 Party Pricing</h3>
@@ -3046,8 +3057,23 @@ const DEFAULT_SETTINGS = {
   budgetPerPerson: 50,
   adultPrice: 50,
   kidPrice: 25,
-  dates: []
+  dates: [],
+  lockedDate: null
 };
+
+const DATE_LOCK_PREFIX="__LOCKED_DATE__:";
+function decodeCandidateDates(raw){
+  const values=Array.isArray(raw)?raw:[];
+  const marker=values.find(x=>typeof x==="string" && x.startsWith(DATE_LOCK_PREFIX));
+  return {
+    dates:values.filter(x=>typeof x==="string" && !x.startsWith(DATE_LOCK_PREFIX)).sort(),
+    lockedDate:marker ? marker.slice(DATE_LOCK_PREFIX.length) : null
+  };
+}
+function encodedCandidateDates(dates=settings.dates,lockedDate=settings.lockedDate){
+  const clean=[...new Set((dates||[]).filter(Boolean))].sort();
+  return lockedDate ? [...clean,DATE_LOCK_PREFIX+lockedDate] : clean;
+}
 
 var partyFields = [
   ["adults","Adults"],
@@ -3110,7 +3136,7 @@ async function loadAll(preferredEventId=null){
       budgetPerPerson:Number(selected.budget_per_person??50),
       adultPrice:Number(selected.adult_price??50),
       kidPrice:Number(selected.kid_price??25),
-      dates:Array.isArray(selected.candidate_dates)?[...selected.candidate_dates].sort():[]
+      ...decodeCandidateDates(selected.candidate_dates)
     };
 
     const [rRes,vRes,mRes]=await Promise.all([
@@ -3273,12 +3299,44 @@ function renderCounters(){
 function counterHtml(id,label){
   return `<div class="counter"><b>${label}</b><button type="button" data-step="-1" data-target="${id}">−</button><input id="${id}" type="number" min="0" value="0"><button type="button" data-step="1" data-target="${id}">+</button></div>`
 }
+
+function setAttendanceCountLock(locked){
+  const shouldLock=!!locked && !isAdmin;
+  ["p_adults","p_kids3to10"].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.readOnly=shouldLock;
+    el.setAttribute("aria-readonly",shouldLock?"true":"false");
+    const row=el.closest(".counter");
+    if(row){
+      row.querySelectorAll("button[data-step]").forEach(btn=>btn.disabled=shouldLock);
+      row.style.opacity=shouldLock?".72":"";
+    }
+  });
+
+  let note=document.getElementById("attendanceCountLockNote");
+  const partyBox=document.getElementById("partyCounters");
+  if(shouldLock && partyBox){
+    if(!note){
+      note=document.createElement("div");
+      note.id="attendanceCountLockNote";
+      note.className="notice warn";
+      note.style.marginTop="10px";
+      partyBox.insertAdjacentElement("afterend",note);
+    }
+    note.textContent="🔒 Attendance counts are locked after RSVP submission. Please contact an admin if the adult or child count needs to change.";
+    note.classList.remove("hidden");
+  }else if(note){
+    note.classList.add("hidden");
+  }
+}
 function renderDates(){
   if(!settings.dates || !settings.dates.length){
     dateChoices.innerHTML = `<div class="empty">Party dates have not been published by the admin yet.</div>`;
     return;
   }
-  dateChoices.innerHTML=settings.dates.map(d=>`<label class="dateopt"><input type="checkbox" class="rsvpDate" value="${d}"><span><strong>${fmtDate(d)}</strong><small>Tap to select</small></span></label>`).join("");
+  const dates=settings.lockedDate ? [settings.lockedDate] : settings.dates;
+  dateChoices.innerHTML=dates.map(d=>`<label class="dateopt"><input type="checkbox" class="rsvpDate" value="${d}" ${settings.lockedDate===d?'checked':''}><span><strong>${fmtDate(d)}</strong><small>${settings.lockedDate===d?'🔒 Final Date — RSVP is locked to this date':'Tap to select'}</small></span></label>`).join("");
 }
 function validateFood(){
   const adultsEl=document.getElementById("p_adults");
@@ -3439,7 +3497,7 @@ function getFormResponse(){
     adults:num("p_adults"),
     kids3to10:num("p_kids3to10"),
     food:Object.fromEntries(foodFields.map(([k])=>[k,num("f_"+k)])),
-    dates:[...document.querySelectorAll(".rsvpDate:checked")].map(x=>x.value),
+    dates:settings.lockedDate ? [settings.lockedDate] : [...document.querySelectorAll(".rsvpDate:checked")].map(x=>x.value),
     notes:val("notes").trim(),
     paid: editingResponseId ? !!responses.find(x=>x.id===editingResponseId)?.paid : false,
     enteredByAdmin:isAdmin,
@@ -3453,6 +3511,7 @@ function resetForm(){
   foodFields.forEach(([k])=>document.getElementById("f_"+k).value=0);
   document.querySelectorAll(".rsvpDate").forEach(x=>x.checked=false);
   editHint.textContent="";
+  setAttendanceCountLock(false);
   validateFood();
 }
 
@@ -3509,6 +3568,7 @@ saveRsvp.onclick=async()=>{
   if(!validateFood()) return toast("Food count must match meal count");
   if(r.status!=="NO" && (!settings.dates || settings.dates.length===0)) return toast("Admin has not published party dates yet");
   if(r.status!=="NO" && r.dates.length===0) return toast("Select at least one available date");
+  if(r.status!=="NO" && settings.lockedDate) r.dates=[settings.lockedDate];
 
   const wasEditing=!!editingResponseId;
   saveRsvp.disabled=true;
@@ -3518,6 +3578,16 @@ saveRsvp.onclick=async()=>{
     r.name=canonicalName;
     const nameInput=document.getElementById("memberName");
     if(nameInput) nameInput.value=canonicalName;
+
+    // Members may update an existing RSVP, but submitted attendance counts
+    // (adults and children age 3–10) are admin-only after the first save.
+    const protectedExisting=editingResponseId
+      ? responses.find(x=>x.id===editingResponseId)
+      : findCurrentEventResponseByName(canonicalName);
+    if(protectedExisting && !isAdmin){
+      r.adults=Number(protectedExisting.adults)||0;
+      r.kids3to10=Number(protectedExisting.kids3to10)||0;
+    }
 
     if(wasEditing){
       // Update ONLY the selected family row.
@@ -3760,16 +3830,19 @@ function renderCollectionSummary(){
   const expected=families.reduce((s,r)=>s+familyAmount(r),0);
   const collected=families.filter(r=>r.paid).reduce((s,r)=>s+familyAmount(r),0);
   const outstanding=Math.max(0,expected-collected);
-  const paidFamilies=families.filter(r=>r.paid).length;
-  const unpaidFamilies=families.filter(r=>!r.paid).length;
+  const paidPeople=families.filter(r=>r.paid).reduce((s,r)=>s+(Number(r.adults)||0)+(Number(r.kids3to10)||0),0);
+  const paidChildren=families.filter(r=>r.paid).reduce((s,r)=>s+(Number(r.kids3to10)||0),0);
+  const unpaidPeople=families.filter(r=>!r.paid).reduce((s,r)=>s+(Number(r.adults)||0)+(Number(r.kids3to10)||0),0);
+  const unpaidChildren=families.filter(r=>!r.paid).reduce((s,r)=>s+(Number(r.kids3to10)||0),0);
 
   box.innerHTML=[
     ["Expected Pool",money(expected)],
     ["Collected",money(collected)],
     ["Outstanding",money(outstanding)],
-    ["Paid Families",paidFamilies],
-    ["Unpaid Families",unpaidFamilies],
-    ["Total Families",families.length]
+    ["Paid People",paidPeople],
+    ["Paid Children",paidChildren],
+    ["Unpaid People",unpaidPeople],
+    ["Unpaid Children",unpaidChildren]
   ].map(([l,n])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
 }
 
@@ -3904,8 +3977,10 @@ function renderStats(){
       const totalDue=selectedFamilies.reduce((s,r)=>s+familyAmount(r),0);
       const totalPaid=selectedFamilies.filter(r=>r.paid).reduce((s,r)=>s+familyAmount(r),0);
       const outstanding=Math.max(0,totalDue-totalPaid);
-      const paidFamilies=selectedFamilies.filter(r=>r.paid).length;
-      const unpaidFamilies=selectedFamilies.filter(r=>!r.paid).length;
+      const paidPeople=selectedFamilies.filter(r=>r.paid).reduce((s,r)=>s+(Number(r.adults)||0)+(Number(r.kids3to10)||0),0);
+      const paidChildren=selectedFamilies.filter(r=>r.paid).reduce((s,r)=>s+(Number(r.kids3to10)||0),0);
+      const unpaidPeople=selectedFamilies.filter(r=>!r.paid).reduce((s,r)=>s+(Number(r.adults)||0)+(Number(r.kids3to10)||0),0);
+      const unpaidChildren=selectedFamilies.filter(r=>!r.paid).reduce((s,r)=>s+(Number(r.kids3to10)||0),0);
 
       return `<div class="top-date-financial-block">
         <div class="top-date-financial-title">
@@ -3917,8 +3992,10 @@ function renderStats(){
             ["Total Due",money(totalDue)],
             ["Total Paid",money(totalPaid)],
             ["Outstanding",money(outstanding)],
-            ["Paid Families",paidFamilies],
-            ["Unpaid Families",unpaidFamilies]
+            ["Paid People",paidPeople],
+            ["Paid Children",paidChildren],
+            ["Unpaid People",unpaidPeople],
+            ["Unpaid Children",unpaidChildren]
           ].map(([l,n])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("")}
         </div>
       </div>`;
@@ -4072,7 +4149,10 @@ window.editResponse=id=>{
   partyFields.forEach(([k])=>document.getElementById("p_"+k).value=r[k]||0);
   foodFields.forEach(([k])=>document.getElementById("f_"+k).value=r.food?.[k]||0);
   document.querySelectorAll(".rsvpDate").forEach(x=>x.checked=r.dates.includes(x.value));
-  editHint.textContent=`Editing ${r.name} — update counts, food choices, dates, or notes and tap Save RSVP`;
+  setAttendanceCountLock(true);
+  editHint.textContent=isAdmin
+    ? `Editing ${r.name} — admin can update counts, food choices, dates, or notes and tap Save RSVP`
+    : `Editing ${r.name} — attendance counts are locked. You may update other RSVP details; contact an admin to change adults or children.`;
   showPage("rsvp"); window.scrollTo({top:0,behavior:"smooth"});
 };
 window.deleteResponse=async id=>{
@@ -4321,9 +4401,24 @@ function renderAdminDateEditor(){
   if(list) list.innerHTML=rows;
   if(dash) dash.innerHTML=rows;
   if(document.getElementById("sDates")) sDates.value=dates.join("\n");
+
+  const select=document.getElementById("lockPartyDate");
+  const status=document.getElementById("dateLockStatus");
+  const lockBtn=document.getElementById("lockPartyDateBtn");
+  const unlockBtn=document.getElementById("unlockPartyDateBtn");
+  if(select){
+    select.innerHTML=dates.length ? dates.map(d=>`<option value="${d}" ${settings.lockedDate===d?'selected':''}>${fmtDate(d)}</option>`).join("") : '<option value="">No dates available</option>';
+    select.disabled=!!settings.lockedDate || !dates.length;
+  }
+  if(status) status.innerHTML=settings.lockedDate
+    ? `🔒 <b>RSVP locked to ${fmtDate(settings.lockedDate)}</b>. Members can no longer RSVP for other dates.`
+    : `No final date is locked. Members can select any published date.`;
+  if(lockBtn){ lockBtn.classList.toggle("hidden",!!settings.lockedDate); lockBtn.disabled=!dates.length; }
+  if(unlockBtn) unlockBtn.classList.toggle("hidden",!settings.lockedDate);
 }
 
 window.removeAdminDate=async(d)=>{
+  if(settings.lockedDate===d) return toast("Unlock the final RSVP date before removing it");
   const nextDates=(settings.dates||[]).filter(x=>x!==d).sort();
   setStatus("Saving dates…");
 
@@ -4339,7 +4434,7 @@ window.removeAdminDate=async(d)=>{
         budget_per_person:Number(settings.budgetPerPerson||50),
         adult_price:Number(settings.adultPrice??50),
         kid_price:Number(settings.kidPrice??25),
-          candidate_dates:nextDates,
+          candidate_dates:encodedCandidateDates(nextDates, settings.lockedDate),
         updated_at:new Date().toISOString()
       },{onConflict:"id"})
       .select("id,event_name,budget_per_person,adult_price,kid_price,candidate_dates,updated_at")
@@ -4352,7 +4447,7 @@ window.removeAdminDate=async(d)=>{
       budgetPerPerson:Number(data.budget_per_person??settings.budgetPerPerson),
       adultPrice:Number(data.adult_price??settings.adultPrice??50),
       kidPrice:Number(data.kid_price??settings.kidPrice??25),
-      dates:Array.isArray(data.candidate_dates)?[...data.candidate_dates].sort():[]
+      ...decodeCandidateDates(data.candidate_dates)
     };
 
     renderAdminDateEditor();
@@ -4366,6 +4461,44 @@ window.removeAdminDate=async(d)=>{
     toast("Could not remove date: "+(e.message||e));
   }
 };
+
+async function saveDateLock(lockedDate){
+  if(!currentEventId) return toast("No active event selected");
+  if(lockedDate && !(settings.dates||[]).includes(lockedDate)) return toast("Choose a published date");
+  setStatus(lockedDate?"Locking RSVP date…":"Unlocking RSVP dates…");
+  try{
+    const {data,error}=await sb.from("party_settings")
+      .update({candidate_dates:encodedCandidateDates(settings.dates,lockedDate),updated_at:new Date().toISOString()})
+      .eq("id",currentEventId)
+      .select("candidate_dates")
+      .single();
+    if(error) throw error;
+    const decoded=decodeCandidateDates(data?.candidate_dates);
+    settings.dates=decoded.dates;
+    settings.lockedDate=decoded.lockedDate;
+    renderAdminDateEditor();
+    renderDates();
+    renderPoll();
+    setStatus("Connected");
+    toast(settings.lockedDate ? `RSVP locked to ${fmtDate(settings.lockedDate)}` : "RSVP date unlocked");
+  }catch(e){
+    console.error("Date lock save failed",e);
+    setStatus("Save failed",false);
+    toast("Could not update RSVP date lock: "+(e.message||e));
+  }
+}
+
+document.getElementById("lockPartyDateBtn")?.addEventListener("click",async()=>{
+  const d=document.getElementById("lockPartyDate")?.value;
+  if(!d) return toast("Choose the final party date");
+  if(!confirm(`Lock RSVP to ${fmtDate(d)}? Members will no longer be able to RSVP for other dates.`)) return;
+  await saveDateLock(d);
+});
+
+document.getElementById("unlockPartyDateBtn")?.addEventListener("click",async()=>{
+  if(!confirm("Unlock RSVP dates? Members will again be able to select any published date.")) return;
+  await saveDateLock(null);
+});
 
 function openDateManager(){
   sEventName.value=settings.eventName;
@@ -4551,7 +4684,7 @@ addPartyDateBtn.onclick=async()=>{
       budget_per_person:Number(settings.budgetPerPerson||50),
       adult_price:Number(settings.adultPrice??50),
       kid_price:Number(settings.kidPrice??25),
-      candidate_dates:nextDates,
+      candidate_dates:encodedCandidateDates(nextDates, settings.lockedDate),
       updated_at:new Date().toISOString()
     };
 
@@ -4570,7 +4703,7 @@ addPartyDateBtn.onclick=async()=>{
       budgetPerPerson:Number(data.budget_per_person??payload.budget_per_person),
       adultPrice:Number(data.adult_price??settings.adultPrice??50),
       kidPrice:Number(data.kid_price??settings.kidPrice??25),
-      dates:[...data.candidate_dates].sort()
+      ...decodeCandidateDates(data.candidate_dates)
     };
 
     newPartyDate.value="";
@@ -4613,7 +4746,7 @@ saveSettings.onclick=async()=>{
         budget_per_person:next.budgetPerPerson,
         adult_price:next.adultPrice,
         kid_price:next.kidPrice,
-        candidate_dates:next.dates,
+        candidate_dates:encodedCandidateDates(next.dates, settings.lockedDate),
         updated_at:new Date().toISOString()
       },{onConflict:"id"})
       .select("id,event_name,budget_per_person,adult_price,kid_price,candidate_dates,updated_at")
@@ -4626,7 +4759,7 @@ saveSettings.onclick=async()=>{
       budgetPerPerson:Number(data.budget_per_person??next.budgetPerPerson),
       adultPrice:Number(data.adult_price??next.adultPrice),
       kidPrice:Number(data.kid_price??next.kidPrice),
-      dates:Array.isArray(data.candidate_dates)?[...data.candidate_dates].sort():[]
+      ...decodeCandidateDates(data.candidate_dates)
     };
 
     document.getElementById("settingsDialog")?.close();
