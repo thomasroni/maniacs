@@ -3724,7 +3724,9 @@ function renderDateFamilyDetails(){
     <span>Kids 3–10 <b>${money(settings.kidPrice||0)}</b></span>
   </div>`;
 
-  const orderedDates=participationByDate().map(x=>x.date);
+  const orderedDates=(settings.lockedDate && !isAdmin)
+    ? [settings.lockedDate]
+    : participationByDate().map(x=>x.date);
   box.innerHTML=pricing+orderedDates.map(d=>{
     const families=active
       .filter(r=>(r.dates||[]).includes(d))
@@ -3882,7 +3884,10 @@ function renderBestDateSummary(){
   const box=document.getElementById("bestDateSummary");
   if(!box) return;
 
-  const ranked=participationByDate();
+  let ranked=participationByDate();
+  if(settings.lockedDate && !isAdmin){
+    ranked=ranked.filter(x=>x.date===settings.lockedDate);
+  }
   if(!ranked.length || ranked[0].count===0){
     box.innerHTML=`<div class="empty">No date preference responses yet.</div>`;
     return;
@@ -4069,7 +4074,10 @@ function renderTopParticipationDate(){
   const box=document.getElementById("topParticipationDate");
   if(!box) return;
 
-  const ranked=participationByDate();
+  let ranked=participationByDate();
+  if(settings.lockedDate && !isAdmin){
+    ranked=ranked.filter(x=>x.date===settings.lockedDate);
+  }
   if(!ranked.length || ranked[0].count===0){
     box.innerHTML=`<div class="empty">No date responses yet.</div>`;
     return;
