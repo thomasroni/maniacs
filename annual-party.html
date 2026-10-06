@@ -4063,7 +4063,15 @@ function renderTopParticipationDate(){
 }
 
 function renderPoll(){
-  const dc=participationByDate();
+  let dc=participationByDate();
+
+  // After the final RSVP date is locked, regular members see only that
+  // date in the public Date Poll. Admin continues to see the full poll.
+  const lockedDate=getLockedDate();
+  if(lockedDate && !isAdmin){
+    dc=dc.filter(x=>x.date===lockedDate);
+  }
+
   const max=Math.max(1,...dc.map(x=>x.count));
   pollBars.innerHTML=dc.map((x,i)=>`<div class="barrow ${i===0&&x.count>0?"poll-leader":""} ${selectedPlanningDate===x.date?"poll-selected":""}"
     onclick="selectPlanningDate('${x.date}')">
