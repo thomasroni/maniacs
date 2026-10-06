@@ -2755,6 +2755,20 @@ header::before{
   }
 }
 
+
+/* Grouped Paid / Unpaid attendance */
+.payment-attendance-groups{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;grid-column:1/-1}
+.payment-attendance-group{border:1px solid;border-radius:16px;padding:12px}
+.payment-attendance-group.paid{background:#effaf2;border-color:#8fd0a1}
+.payment-attendance-group.unpaid{background:#fff2f2;border-color:#efaaaa}
+.payment-attendance-title{font-size:15px;font-weight:950;margin-bottom:9px}
+.payment-attendance-group.paid .payment-attendance-title,.payment-attendance-group.paid .payment-attendance-value{color:#087a36}
+.payment-attendance-group.unpaid .payment-attendance-title,.payment-attendance-group.unpaid .payment-attendance-value{color:#c5161d}
+.payment-attendance-counts{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.payment-attendance-item{background:rgba(255,255,255,.72);border-radius:11px;padding:9px 5px;text-align:center}
+.payment-attendance-value{display:block;font-size:24px;line-height:1;font-weight:950}
+.payment-attendance-label{display:block;margin-top:5px;font-size:11px;font-weight:800;color:#626b74}
+@media(max-width:480px){.payment-attendance-groups{gap:7px}.payment-attendance-group{padding:10px 7px}.payment-attendance-value{font-size:22px}}
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -3822,6 +3836,26 @@ function renderAdminPricing(){
   }
 }
 
+
+function paymentAttendanceGroupsHtml(paidPeople,paidChildren,unpaidPeople,unpaidChildren){
+  return `<div class="payment-attendance-groups">
+    <div class="payment-attendance-group paid">
+      <div class="payment-attendance-title">✓ Paid</div>
+      <div class="payment-attendance-counts">
+        <div class="payment-attendance-item"><span class="payment-attendance-value">${paidPeople}</span><span class="payment-attendance-label">People</span></div>
+        <div class="payment-attendance-item"><span class="payment-attendance-value">${paidChildren}</span><span class="payment-attendance-label">Children</span></div>
+      </div>
+    </div>
+    <div class="payment-attendance-group unpaid">
+      <div class="payment-attendance-title">✕ Unpaid</div>
+      <div class="payment-attendance-counts">
+        <div class="payment-attendance-item"><span class="payment-attendance-value">${unpaidPeople}</span><span class="payment-attendance-label">People</span></div>
+        <div class="payment-attendance-item"><span class="payment-attendance-value">${unpaidChildren}</span><span class="payment-attendance-label">Children</span></div>
+      </div>
+    </div>
+  </div>`;
+}
+
 function renderCollectionSummary(){
   const box=document.getElementById("collectionStats");
   if(!box) return;
@@ -3838,12 +3872,9 @@ function renderCollectionSummary(){
   box.innerHTML=[
     ["Expected Pool",money(expected)],
     ["Collected",money(collected)],
-    ["Outstanding",money(outstanding)],
-    ["Paid People",paidPeople],
-    ["Paid Children",paidChildren],
-    ["Unpaid People",unpaidPeople],
-    ["Unpaid Children",unpaidChildren]
-  ].map(([l,n])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
+    ["Outstanding",money(outstanding)]
+  ].map(([l,n])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("")
+  +paymentAttendanceGroupsHtml(paidPeople,paidChildren,unpaidPeople,unpaidChildren);
 }
 
 
@@ -3991,12 +4022,9 @@ function renderStats(){
           ${[
             ["Total Due",money(totalDue)],
             ["Total Paid",money(totalPaid)],
-            ["Outstanding",money(outstanding)],
-            ["Paid People",paidPeople],
-            ["Paid Children",paidChildren],
-            ["Unpaid People",unpaidPeople],
-            ["Unpaid Children",unpaidChildren]
+            ["Outstanding",money(outstanding)]
           ].map(([l,n])=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("")}
+          ${paymentAttendanceGroupsHtml(paidPeople,paidChildren,unpaidPeople,unpaidChildren)}
         </div>
       </div>`;
     }).join("");
@@ -4067,7 +4095,7 @@ function renderPoll(){
 
   // After the final RSVP date is locked, regular members see only that
   // date in the public Date Poll. Admin continues to see the full poll.
-  const lockedDate=getLockedDate();
+  const lockedDate=String(settings.lockedDate||'').trim();
   if(lockedDate && !isAdmin){
     dc=dc.filter(x=>x.date===lockedDate);
   }
